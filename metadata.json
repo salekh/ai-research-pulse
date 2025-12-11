@@ -1,0 +1,5 @@
+{
+  "name": "AI Research Pulse",
+  "description": "Aggregator for top AI research news from Google, OpenAI, and Anthropic with Gemini-powered summaries.",
+  "requestFramePermissions": []
+}

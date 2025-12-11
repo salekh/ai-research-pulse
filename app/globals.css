@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+:root {
+  /* Google Material 3 inspired palette */
+  --background: #F8F9FA; /* Google Grey 50 */
+  --foreground: #1F1F1F; /* Google Grey 900 */
+  
+  --primary: #0B57D0; /* Google Blue 600 */
+  --primary-foreground: #FFFFFF;
+  
+  --secondary: #D3E3FD; /* Google Blue 100 */
+  --secondary-foreground: #041E49; /* Google Blue 900 */
+  
+  --muted: #F2F2F2;
+  --muted-foreground: #444746; /* Google Grey 700 */
+  
+  --card: #FFFFFF;
+  --card-foreground: #1F1F1F;
+  
+  --border: #E0E3E1; /* Google Grey 200 */
+  
+  /* Font Stack mimicking Google Sans */
+  --font-sans: 'Roboto', 'Helvetica Neue', 'Arial', sans-serif;
+}
+
+@theme {
+  --font-sans: var(--font-sans);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
