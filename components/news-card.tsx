@@ -17,6 +17,7 @@ interface Article {
   source: 'Google Research' | 'Google DeepMind' | 'OpenAI' | 'Anthropic' | 'Microsoft Research' | 'Meta AI';
   snippet: string;
   tags?: string[];
+  score?: number;
 }
 
 interface NewsCardProps {
@@ -92,8 +93,16 @@ export function NewsCard({ article, onSave, isSaved = false }: NewsCardProps) {
   };
 
   return (
-    <Card className="h-full flex flex-col border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 rounded-2xl overflow-hidden bg-white group">
-      <CardHeader className="pb-3 pt-5 px-5">
+    <Card className="h-full flex flex-col border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 rounded-2xl overflow-hidden bg-white group relative">
+      {article.score !== undefined && (
+        <div className="absolute top-0 left-0 right-0 bg-blue-50/90 backdrop-blur-sm border-b border-blue-100 py-1 px-3 flex items-center justify-center gap-1.5 z-10">
+          <Sparkles className="w-3 h-3 text-blue-600" />
+          <span className="text-xs font-medium text-blue-700">
+            {Math.round(article.score * 100)}% match
+          </span>
+        </div>
+      )}
+      <CardHeader className={`pb-3 px-5 ${article.score !== undefined ? 'pt-10' : 'pt-5'}`}>
         <div className="flex justify-between items-start gap-2 mb-3">
           <div className="flex items-center gap-2">
             <CompanyLogo company={article.source} className="w-5 h-5" />

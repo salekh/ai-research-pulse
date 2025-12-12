@@ -34,6 +34,7 @@ export interface Article {
   snippet: string;
   tags?: string[];
   embedding?: number[];
+  score?: number;
 }
 
 export function saveArticles(articles: Article[]) {

@@ -1,11 +1,16 @@
 # Research Pulse
-
+ 
+> "It's a struggle to keep pace with the developments in generative AI and the brisk pace of innovation and competition. But AI can help you keep abreast of AI."
+ 
 Stay ahead of the curve with **Research Pulse**, a real-time dashboard that aggregates, analyzes, and visualizes the latest AI research from top labs including **Google DeepMind**, **Google Research**, **OpenAI**, **Anthropic**, **Meta AI**, and **Microsoft Research**.
-
+ 
 Powered by **Gemini 2.5 Flash** and **Vertex AI**, this application uses advanced semantic search, auto-tagging, and topic modeling to help you find relevant research instantly.
-
+ 
 ## ✨ Features
-
+ 
+- **Smart Caching & Refresh**:
+  - **Instant Load**: The application serves cached articles from a local SQLite database immediately for sub-second load times.
+  - **Background Refresh**: A non-blocking background process fetches the latest RSS feeds and scrapes new content, updating the database without slowing down the user experience.
 - **Real-time Aggregation**: Fetches latest research from RSS feeds (Google, DeepMind, Microsoft, Meta) and direct scraping (Anthropic).
 - **Semantic & Hybrid Search**: Search for concepts like "LLM scaling" or "RLHF" using vector embeddings (`text-embedding-004`) combined with keyword boosting.
 - **AI-Powered Insights**:
@@ -88,6 +93,10 @@ The application is containerized and deployed on **Google Cloud Run**.
 - **Hybrid Search**: Combines cosine similarity of embeddings with keyword matching to ensure users find specific terms (e.g., "Llama 3") even if the semantic score is lower.
 - **Robust Scraping**: Uses a mix of RSS parsing (`rss-parser`) and Puppeteer (`puppeteer`) to handle different blog structures and anti-bot protections (e.g., Meta AI).
 - **Data Enrichment**: Every ingested article is processed to generate a vector embedding and relevant tags, enabling rich filtering and discovery.
+- **Vertex AI Reranker**: Search results are re-ranked using the **Vertex AI Discovery Engine API** (`semantic-ranker-512@latest`). This ensures that the top results are semantically relevant to the user's query, rather than just matching keywords or being sorted by date. A similarity score (e.g., "85% match") is displayed on each card to indicate relevance.
+- **Trend Analysis**: Uses **Gemini 2.5 Pro** to analyze the titles of all recent articles. It generates a structured JSON response containing:
+  - A quantitative distribution of topics (for the pie chart).
+  - A comprehensive markdown report with sections like "Executive Summary", "Key Emerging Themes", and "Future Outlook".
 
 ## License
 

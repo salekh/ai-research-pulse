@@ -4,6 +4,7 @@ import * as cheerio from 'cheerio';
 import { saveArticles, getArticles, getAllArticlesForSearch, Article } from '@/lib/db';
 import { VertexAI } from '@google-cloud/vertexai';
 import { cosineSimilarity } from '@/lib/utils';
+import { rerankArticles } from '@/lib/reranker';
 
 export const dynamic = 'force-dynamic';
 
@@ -308,13 +309,19 @@ export async function GET(request: Request) {
       articles = withScores
         .filter(a => a.score > 0.1) // Significantly lowered threshold to ensure results
         .sort((a, b) => b.score - a.score)
-        .slice(0, 50);
+        .slice(0, 100); // Get top 100 candidates for reranking
+
+      // Rerank using Vertex AI
+      articles = await rerankArticles(query, articles);
     } else {
       articles = getArticles();
     }
 
-    // Explicitly sort by date (latest first)
-    articles.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // Explicitly sort by date (latest first) ONLY if we are not searching
+    // If searching, we want relevance (which is already done by reranker or local score)
+    if (!query) {
+      articles.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
 
     return NextResponse.json({ articles });
   } catch (e) {
