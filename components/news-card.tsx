@@ -56,17 +56,36 @@ export function NewsCard({ article, onSave, isSaved = false }: NewsCardProps) {
   };
 
   const handleGenerateOverview = async () => {
+    if (isExpanded) {
+      setIsExpanded(false);
+      return;
+    }
+
+    setIsExpanded(true);
+
     if (aiOverview) return;
+
     setIsGenerating(true);
     try {
+      const response = await fetch('/api/summarize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: article.title,
+          snippet: article.snippet,
+          link: article.link,
+        }),
+      });
 
+      if (!response.ok) throw new Error('Failed to generate summary');
+
+      const data = await response.json();
+      setAiOverview(data.summary);
     } catch (error: any) {
       console.error('Gemini API Error:', error);
-      let msg = 'Failed to generate overview.';
-      if (error.message?.includes('API_KEY_SERVICE_BLOCKED') || error.message?.includes('403')) {
-        msg = 'Gemini API is not enabled. Please enable "Generative Language API" in Google Cloud Console.';
-      }
-      setAiOverview(msg);
+      setAiOverview('Failed to generate overview. Please try again later.');
     } finally {
       setIsGenerating(false);
     }

@@ -115,26 +115,36 @@ export function SearchHero({ onSearch, onShowFeed }: SearchHeroProps) {
         </form>
       </div>
 
-      {/* Powered by Gemini Badge */}
-      <div className="mt-8 flex items-center gap-2 px-4 py-2 bg-secondary/30 rounded-full border border-secondary/50">
-        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Powered by</span>
-        <div className="flex items-center gap-1.5">
-          <span className="text-sm font-semibold text-primary">
-            Gemini
-          </span>
-        </div>
+      {/* I'm Feeling Lucky Button */}
+      <div className="mt-8 animate-in fade-in duration-700 delay-300">
+        <Button
+          variant="outline"
+          onClick={() => window.location.href = '/api/lucky'}
+          className="bg-[#f8f9fa] border border-[#f8f9fa] hover:border-[#dadce0] hover:shadow-sm text-[#3c4043] font-medium px-6 py-2 rounded-md transition-all"
+        >
+          I&apos;m Feeling Lucky
+        </Button>
       </div>
 
+
+
       {/* Footer / Navigation */}
-      <div className="fixed bottom-8 left-0 right-0 flex justify-center animate-in fade-in duration-1000 delay-500">
+      <div className="fixed bottom-8 left-0 right-0 flex flex-col items-center gap-4 animate-in fade-in duration-1000 delay-500">
         <Button 
-          variant="ghost" 
+          variant="default" 
+          size="lg"
           onClick={onShowFeed}
-          className="text-gray-500 hover:text-gray-900 hover:bg-gray-100/50 rounded-full px-6 gap-2 transition-colors"
+          className="rounded-full px-8 py-6 text-lg font-medium shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 gap-3 bg-white text-primary hover:bg-gray-50 border border-gray-100"
         >
-          <span className="text-sm font-medium">Explore Full Feed</span>
-          <ArrowRight className="w-4 h-4" />
+          <span>Explore Full Feed</span>
+          <ArrowRight className="w-5 h-5" />
         </Button>
+
+        {/* Powered by Gemini Badge - Discreet */}
+        <div className="flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
+          <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Powered by</span>
+          <span className="text-xs font-semibold text-gray-500">Gemini</span>
+        </div>
       </div>
     </div>
   );

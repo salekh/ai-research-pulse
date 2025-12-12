@@ -92,13 +92,20 @@ async function generateTags(article: Article): Promise<string[]> {
 async function fetchRSS(url: string, source: Article['source']): Promise<Article[]> {
   try {
     const feed = await parser.parseURL(url);
-    return feed.items.map((item) => ({
-      title: item.title || 'No title',
-      link: item.link || '',
-      date: item.isoDate || (item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString()),
-      source,
-      snippet: item.contentSnippet || item.content || '',
-    }));
+    return feed.items.map((item) => {
+      let tags: string[] = [];
+      if (item.categories) {
+        tags = item.categories.slice(0, 4);
+      }
+      return {
+        title: item.title || 'No title',
+        link: item.link || '',
+        date: item.isoDate || (item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString()),
+        source,
+        snippet: item.contentSnippet || item.content || '',
+        tags,
+      };
+    });
   } catch (error) {
     console.error(`Error fetching RSS from ${source}:`, error);
     return [];
@@ -206,37 +213,6 @@ async function scrapeAnthropic(url: string, category: string): Promise<Article[]
   }
 }
 
-async function scrapeMeta(): Promise<Article[]> {
-  try {
-    const feedUrls = [
-      'https://ai.meta.com/blog/rss.xml',
-      'https://ai.meta.com/blog/rss/',
-      'https://research.facebook.com/feed/'
-    ];
-
-    for (const url of feedUrls) {
-      try {
-        const feed = await parser.parseURL(url);
-        if (feed.items && feed.items.length > 0) {
-          return feed.items.map(item => ({
-            title: item.title || 'No title',
-            link: item.link || '',
-            date: item.pubDate || item.isoDate || new Date().toISOString(),
-            source: 'Meta AI',
-            snippet: item.contentSnippet || item.content || 'Latest from Meta AI.',
-          }));
-        }
-      } catch (e) {
-        // Continue
-      }
-    }
-    return [];
-  } catch (error) {
-    console.error('Error fetching Meta AI:', error);
-    return [];
-  }
-}
-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('q');
@@ -248,15 +224,16 @@ export async function GET(request: Request) {
       console.log('Refreshing articles...');
       const allArticles = await Promise.all([
         fetchRSS('https://research.google/blog/rss/', 'Google Research'),
-        fetchRSS('https://blog.google/technology/google-deepmind/rss/', 'Google DeepMind'),
+        fetchRSS('https://deepmind.google/blog/rss.xml', 'Google DeepMind'),
         fetchRSS('https://openai.com/news/rss.xml', 'OpenAI'),
         scrapeAnthropic('https://www.anthropic.com/engineering', 'Engineering'),
         scrapeAnthropic('https://www.anthropic.com/research', 'Research'),
         fetchRSS('https://www.microsoft.com/en-us/research/feed/', 'Microsoft Research'),
-        scrapeMeta(),
+        fetchRSS('https://ai.meta.com/blog/rss.xml/', 'Meta AI'),
       ]);
 
       const flatArticles = allArticles.flat();
+
       
       // Process articles (tags, embeddings) in background if possible, 
       // but for now we'll just save them to ensure they are in DB.
@@ -296,31 +273,42 @@ export async function GET(request: Request) {
     // Always return articles from DB
     let articles: Article[] = [];
     if (query) {
-      // ... existing search logic ...
-      // We need to implement search here or reuse existing logic
-      // The original code had search logic inside GET.
-      // Let's reuse it.
-      const embedding = await getEmbeddings([query]);
-      if (embedding.length > 0) {
-        const all = getAllArticlesForSearch();
-        const withScores = all.map(article => {
-          let score = 0;
-          if (article.embedding) {
-            const articleEmbedding = article.embedding;
-            score = cosineSimilarity(embedding[0], articleEmbedding);
-          }
-          // Boost for keyword matches
-          const lowerQuery = query.toLowerCase();
-          if (article.title.toLowerCase().includes(lowerQuery)) score += 0.3;
-          if (article.snippet.toLowerCase().includes(lowerQuery)) score += 0.1;
-          return { ...article, score };
-        });
-        
-        articles = withScores
-          .filter(a => a.score > 0.4) // Threshold
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 20);
+      let queryEmbedding: number[] | null = null;
+      try {
+        const embeddings = await getEmbeddings([query]);
+        if (embeddings.length > 0) {
+          queryEmbedding = embeddings[0];
+        }
+      } catch (e) {
+        console.error('Failed to get query embedding:', e);
       }
+
+      const all = getAllArticlesForSearch();
+      const withScores = all.map(article => {
+        let score = 0;
+        
+        // Vector similarity
+        if (article.embedding && queryEmbedding) {
+          score = cosineSimilarity(queryEmbedding, article.embedding);
+        }
+        
+        // Keyword boosting
+        const lowerQuery = query.toLowerCase();
+        const lowerTitle = article.title.toLowerCase();
+        const lowerSnippet = article.snippet.toLowerCase();
+        
+        if (lowerTitle.includes(lowerQuery)) score += 0.5;
+        else if (lowerQuery.split(' ').some(w => w.length > 3 && lowerTitle.includes(w))) score += 0.3; // Increased partial boost
+        
+        if (lowerSnippet.includes(lowerQuery)) score += 0.3; // Increased snippet boost
+        
+        return { ...article, score };
+      });
+      
+      articles = withScores
+        .filter(a => a.score > 0.1) // Significantly lowered threshold to ensure results
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 50);
     } else {
       articles = getArticles();
     }
