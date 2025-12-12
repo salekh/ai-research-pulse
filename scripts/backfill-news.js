@@ -167,10 +167,30 @@ async function scrapeMetaPuppeteer() {
         
         if (!title || title.length < 10 || title === 'Read more') continue;
         
+        // Try to find date in parent or grandparent
+        let date = new Date().toISOString();
+        let containerText = '';
+        
+        if (link.parentElement && link.parentElement.parentElement) {
+          containerText = link.parentElement.parentElement.innerText;
+        }
+        
+        // Regex for "Month DD, YYYY" or "Mon DD, YYYY"
+        // e.g. November 19, 2025 or Nov 24, 2025
+        const dateMatch = containerText.match(/([A-Z][a-z]{2,8}\s+\d{1,2},\s+\d{4})/);
+        if (dateMatch) {
+          try {
+            const parsed = new Date(dateMatch[0]);
+            if (!isNaN(parsed.getTime())) {
+              date = parsed.toISOString();
+            }
+          } catch (e) {}
+        }
+        
         results.push({
           title,
           link: fullLink,
-          date: new Date().toISOString(), // Placeholder as date is hard to extract reliably without more logic
+          date,
           source: 'Meta AI',
           snippet: 'Meta AI Blog'
         });

@@ -4,9 +4,6 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Research Pulse",
   description: "Aggregator for top AI research news",
-  icons: {
-    icon: '/favicon.ico',
-  },
 };
 
 import { Roboto } from "next/font/google";
