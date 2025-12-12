@@ -16,6 +16,7 @@ interface Article {
   date: string;
   source: 'Google Research' | 'Google DeepMind' | 'OpenAI' | 'Anthropic' | 'Microsoft Research' | 'Meta AI';
   snippet: string;
+  tags?: string[];
 }
 
 interface NewsCardProps {
@@ -25,13 +26,15 @@ interface NewsCardProps {
 }
 
 const sourceColors = {
-  'Google Research': 'text-blue-600 bg-blue-50',
-  'Google DeepMind': 'text-cyan-700 bg-cyan-50',
+  'Google Research': 'text-primary bg-secondary/30',
+  'Google DeepMind': 'text-teal-700 bg-teal-50', // DeepMind often uses teal/cyan
   'OpenAI': 'text-green-700 bg-green-50',
   'Anthropic': 'text-purple-700 bg-purple-50',
   'Microsoft Research': 'text-blue-800 bg-blue-50',
   'Meta AI': 'text-blue-600 bg-blue-50',
 };
+
+import { CompanyLogo } from './company-logo';
 
 export function NewsCard({ article, onSave, isSaved = false }: NewsCardProps) {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -53,45 +56,9 @@ export function NewsCard({ article, onSave, isSaved = false }: NewsCardProps) {
   };
 
   const handleGenerateOverview = async () => {
-    if (aiOverview) {
-      setIsExpanded(!isExpanded);
-      return;
-    }
-
+    if (aiOverview) return;
     setIsGenerating(true);
-    setIsExpanded(true);
-
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY || '' });
-      
-      try {
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: `Generate a concise, insightful summary (max 3 bullet points) of this AI research article. 
-          Title: ${article.title}
-          Link: ${article.link}
-          Snippet: ${article.snippet}
-          
-          Focus on the key technical innovation or impact.`,
-          config: {
-            tools: [{ googleSearch: {} }],
-          },
-        });
-        setAiOverview(response.text || 'Could not generate overview.');
-      } catch (innerError: any) {
-        // Fallback to flash lite
-        console.warn('Gemini 2.5 Flash failed, falling back to Flash Lite:', innerError);
-        const response = await ai.models.generateContent({
-          model: 'gemini-flash-lite-latest',
-          contents: `Generate a concise, insightful summary (max 3 bullet points) of this AI research article. 
-          Title: ${article.title}
-          Link: ${article.link}
-          Snippet: ${article.snippet}
-          
-          Focus on the key technical innovation or impact.`,
-        });
-        setAiOverview(response.text || 'Could not generate overview.');
-      }
 
     } catch (error: any) {
       console.error('Gemini API Error:', error);
@@ -109,9 +76,10 @@ export function NewsCard({ article, onSave, isSaved = false }: NewsCardProps) {
     <Card className="h-full flex flex-col border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 rounded-2xl overflow-hidden bg-white group">
       <CardHeader className="pb-3 pt-5 px-5">
         <div className="flex justify-between items-start gap-2 mb-3">
-          <Badge variant="secondary" className={`font-medium rounded-md px-2 py-0.5 border-none ${sourceColors[article.source] || 'bg-gray-100 text-gray-700'}`}>
-            {article.source}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <CompanyLogo company={article.source} className="w-5 h-5" />
+            <span className="text-sm font-medium text-gray-600">{article.source}</span>
+          </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500 font-medium min-w-[3rem] text-right">
               {formattedDate}
@@ -138,6 +106,16 @@ export function NewsCard({ article, onSave, isSaved = false }: NewsCardProps) {
         <p className="text-sm text-[#444746] line-clamp-3 leading-relaxed">
           {article.snippet.replace(/<[^>]*>?/gm, '')}
         </p>
+
+        {article.tags && article.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-3">
+            {article.tags.map((tag, i) => (
+              <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
 
         <AnimatePresence>
           {isExpanded && (

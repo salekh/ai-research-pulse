@@ -5,22 +5,34 @@
   --background: #F8F9FA; /* Google Grey 50 */
   --foreground: #1F1F1F; /* Google Grey 900 */
   
-  --primary: #0B57D0; /* Google Blue 600 */
+  /* Google Brand Colors */
+    --google-blue: #4285F4;
+    --google-red: #EA4335;
+    --google-yellow: #FBBC05;
+    --google-green: #34A853;
+  
+    --primary: var(--google-blue);
   --primary-foreground: #FFFFFF;
   
-  --secondary: #D3E3FD; /* Google Blue 100 */
-  --secondary-foreground: #041E49; /* Google Blue 900 */
+  --secondary: #E8F0FE;
+    /* Google Blue 50 */
+    --secondary-foreground: #1967D2;
+    /* Google Blue 700 */
   
-  --muted: #F2F2F2;
-  --muted-foreground: #444746; /* Google Grey 700 */
+  --muted: #F1F3F4;
+    /* Google Grey 100 */
+    --muted-foreground: #5F6368;
+    /* Google Grey 700 */
   
   --card: #FFFFFF;
-  --card-foreground: #1F1F1F;
+  --card-foreground: #202124;
+    /* Google Grey 900 */
   
-  --border: #E0E3E1; /* Google Grey 200 */
+  --border: #DADCE0;
+    /* Google Grey 300 */
   
-  /* Font Stack mimicking Google Sans */
-  --font-sans: 'Roboto', 'Helvetica Neue', 'Arial', sans-serif;
+  /* Font Stack */
+    --font-sans: var(--font-roboto);
 }
 
 @theme {

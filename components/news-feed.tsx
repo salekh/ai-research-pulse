@@ -17,43 +17,58 @@ interface Article {
   snippet: string;
 }
 
-export function NewsFeed() {
+export function NewsFeed({ initialQuery = '' }: { initialQuery?: string }) {
   const [articles, setArticles] = useState<Article[]>([]);
   const [savedArticles, setSavedArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [activeTab, setActiveTab] = useState('feed');
 
-  const fetchNews = async () => {
-    setLoading(true);
+
+  useEffect(() => {
+    // 1. Load initial data (fast, from DB)
+    fetchNews(searchQuery, false);
+
+    // 2. Trigger background refresh (slow, scrapes new data)
+    // Only do this if we are not searching (i.e. viewing the feed)
+    if (!searchQuery) {
+      fetchNews(searchQuery, true);
+    }
+  }, []); // Run once on mount
+
+  // When search query changes, we might want to just search DB first?
+  // Or if the user hits enter, we search.
+  // The handleSearch below calls fetchNews(searchQuery).
+  // We should update fetchNews to handle the refresh param.
+
+  const fetchNews = async (query = '', refresh = false) => {
+    if (!refresh) setLoading(true); // Only show loading spinner for initial load or explicit search
     setError(null);
     try {
-      const res = await fetch('/api/news');
+      let url = query ? `/api/news?q=${encodeURIComponent(query)}` : '/api/news';
+      if (refresh) {
+        url += (url.includes('?') ? '&' : '?') + 'refresh=true';
+      }
+      
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch news');
       const data = await res.json();
       setArticles(data.articles);
     } catch (err) {
-      setError('Failed to load news feeds. Please try again later.');
       console.error(err);
+      if (!refresh) setError('Failed to load news feeds. Please try again later.');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchNews();
-    // Load saved articles from localStorage
-    const saved = localStorage.getItem('savedArticles');
-    if (saved) {
-      try {
-        setSavedArticles(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to parse saved articles', e);
-      }
+  const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      fetchNews(searchQuery);
     }
-  }, []);
+  };
 
   const handleSaveArticle = (article: Article) => {
     if (!savedArticles.some(a => a.link === article.link)) {
@@ -71,10 +86,7 @@ export function NewsFeed() {
 
   const filteredArticles = articles.filter(a => {
     const matchesSource = filter ? a.source === filter : true;
-    const matchesSearch = searchQuery 
-      ? a.title.toLowerCase().includes(searchQuery.toLowerCase()) || a.snippet.toLowerCase().includes(searchQuery.toLowerCase())
-      : true;
-    return matchesSource && matchesSearch;
+    return matchesSource;
   });
 
   const sources = Array.from(new Set(articles.map(a => a.source)));
@@ -84,24 +96,33 @@ export function NewsFeed() {
       <Tabs defaultValue="feed" className="w-full" onValueChange={setActiveTab}>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <TabsList className="bg-gray-100 p-1 rounded-full">
-            <TabsTrigger value="feed" className="rounded-full px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-              <Newspaper className="w-4 h-4 mr-2" /> Feed
+            <TabsTrigger 
+              value="feed" 
+              className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-full px-6 transition-all duration-300"
+            >
+              <Newspaper className="w-4 h-4 mr-2" />
+              Latest News
             </TabsTrigger>
             <TabsTrigger value="saved" className="rounded-full px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm">
               <Bookmark className="w-4 h-4 mr-2" /> Saved ({savedArticles.length})
             </TabsTrigger>
-            <TabsTrigger value="trends" className="rounded-full px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-              <TrendingUp className="w-4 h-4 mr-2" /> Trends
+            <TabsTrigger 
+              value="trends" 
+              className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-full px-6 transition-all duration-300"
+            >
+              <TrendingUp className="w-4 h-4 mr-2" />
+              Trends
             </TabsTrigger>
           </TabsList>
 
           <div className="relative w-full md:w-64">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input 
-              placeholder="Search topics..." 
+              placeholder="Search topics (Press Enter)..." 
               className="pl-9 rounded-full bg-white border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearch}
             />
           </div>
         </div>
@@ -133,7 +154,7 @@ export function NewsFeed() {
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={fetchNews} 
+              onClick={() => fetchNews(searchQuery)} 
               disabled={loading}
               className="text-blue-600 hover:bg-blue-50 rounded-full"
             >

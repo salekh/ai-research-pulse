@@ -2,7 +2,6 @@
 
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { GoogleGenAI } from '@google/genai';
 import { useEffect, useState } from 'react';
 import { Loader2, Sparkles, RefreshCw } from 'lucide-react';
 
@@ -16,8 +15,11 @@ interface TrendData {
   value: number;
 }
 
+import ReactMarkdown from 'react-markdown';
+
 export function TrendChart({ articles }: { articles: Article[] }) {
   const [trends, setTrends] = useState<TrendData[]>([]);
+  const [summary, setSummary] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [analyzed, setAnalyzed] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -33,51 +35,35 @@ export function TrendChart({ articles }: { articles: Article[] }) {
     setError(null);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY || '' });
-      
       // Prepare a concise list of titles for analysis
-      const contentSummary = articles.slice(0, 30).map(a => `- ${a.title}`).join('\n');
-      const prompt = `Analyze these AI research titles and identify the top 5 trending technical topics or keywords. 
-        Return ONLY a JSON array of objects with 'name' (topic) and 'value' (estimated relevance/frequency score from 1-100).
-        
-        Titles:
-        ${contentSummary}`;
+      const titles = articles.slice(0, 50).map(a => a.title); // Increased to 50 for better coverage
+      
+      const res = await fetch('/api/trends', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ titles }),
+      });
 
-      let text = '';
-
-      try {
-        const response = await ai.models.generateContent({
-          model: 'gemini-3-pro-preview',
-          contents: prompt,
-          config: {
-            responseMimeType: 'application/json',
-          }
-        });
-        text = response.text || '';
-      } catch (innerError) {
-        console.warn('Gemini 3 Pro failed for trends, falling back to Flash 2.5:', innerError);
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: prompt,
-          config: {
-            responseMimeType: 'application/json',
-          }
-        });
-        text = response.text || '';
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Failed to fetch trends');
       }
 
-      if (text) {
-        const data = JSON.parse(text);
+      const data = await res.json();
+      if (data.trends) {
+        setTrends(data.trends);
+        setSummary(data.summary);
+      } else if (Array.isArray(data)) {
+        // Fallback for old API response style
         setTrends(data);
-        setAnalyzed(true);
+        setSummary(null);
       }
+      setAnalyzed(true);
     } catch (err: any) {
       console.error('Trend analysis failed:', err);
-      let msg = 'Failed to analyze trends.';
-      if (err.message?.includes('API_KEY_SERVICE_BLOCKED') || err.message?.includes('403')) {
-        msg = 'Gemini API is not enabled for this API Key. Please enable the "Generative Language API" in your Google Cloud Console.';
-      }
-      setError(msg);
+      setError(err.message || 'Failed to analyze trends.');
     } finally {
       setLoading(false);
     }
@@ -149,29 +135,38 @@ export function TrendChart({ articles }: { articles: Article[] }) {
           Trending Topics
         </CardTitle>
       </CardHeader>
-      <CardContent className="h-[200px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={trends} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
-            <XAxis type="number" hide />
-            <YAxis 
-              dataKey="name" 
-              type="category" 
-              width={100} 
-              tick={{ fontSize: 12, fill: '#444746' }} 
-              axisLine={false}
-              tickLine={false}
-            />
-            <Tooltip 
-              cursor={{ fill: 'transparent' }}
-              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
-            />
-            <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
-              {trends.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+      <CardContent className="w-full">
+        <div className="h-[200px] w-full mb-8">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={trends} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+              <XAxis type="number" hide />
+              <YAxis 
+                dataKey="name" 
+                type="category" 
+                width={100} 
+                tick={{ fontSize: 12, fill: '#444746' }} 
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip 
+                cursor={{ fill: 'transparent' }}
+                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+              />
+              <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
+                {trends.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        {summary && (
+          <div className="mt-6 px-6 py-6 bg-white rounded-xl border border-gray-100 shadow-sm">
+            <div className="prose prose-blue prose-sm max-w-none">
+              <ReactMarkdown>{summary}</ReactMarkdown>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
