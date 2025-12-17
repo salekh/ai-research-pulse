@@ -41,22 +41,22 @@ The application is containerized and deployed on **Google Cloud Run**.
 
 1. **Build and Deploy**:
    ```bash
-   gcloud run deploy ai-research-pulse \
+   gcloud run deploy your-service-name \
      --source . \
-     --region us-central1 \
+     --region your-gcp-region \
      --allow-unauthenticated \
-     --set-env-vars GOOGLE_CLOUD_PROJECT=your-project-id,GOOGLE_CLOUD_LOCATION=us-central1
+     --set-env-vars GOOGLE_CLOUD_PROJECT=your-gcp-project-id,GOOGLE_CLOUD_LOCATION=your-gcp-region
    ```
 
 2. **Database Configuration**:
    Ensure your Cloud Run service is connected to the Cloud SQL instance:
    ```bash
-   gcloud run deploy ai-research-pulse \
+   gcloud run deploy your-service-name \
      --source . \
-     --region us-central1 \
+     --region your-gcp-region \
      --allow-unauthenticated \
-     --add-cloudsql-instances sa-learning-1:us-central1:ai-research-pulse-db \
-     --set-env-vars GOOGLE_CLOUD_PROJECT=sa-learning-1,GOOGLE_CLOUD_LOCATION=us-central1,POSTGRES_USER=postgres,POSTGRES_PASSWORD=your_password,POSTGRES_DB=postgres,POSTGRES_HOST=/cloudsql/sa-learning-1:us-central1:ai-research-pulse-db
+     --add-cloudsql-instances your-gcp-project-id:your-gcp-region:your-cloud-sql-instance \
+     --set-env-vars GOOGLE_CLOUD_PROJECT=your-gcp-project-id,GOOGLE_CLOUD_LOCATION=your-gcp-region,POSTGRES_USER=postgres,POSTGRES_PASSWORD=your-db-password,POSTGRES_DB=postgres,POSTGRES_HOST=/cloudsql/your-gcp-project-id:your-gcp-region:your-cloud-sql-instance
    ```
 
 ## 🛠️ Tech Stack
@@ -75,7 +75,7 @@ The application is containerized and deployed on **Google Cloud Run**.
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/ai-research-pulse.git
+   git clone https://github.com/your-github-username/ai-research-pulse.git
    cd ai-research-pulse
    ```
 
@@ -92,7 +92,7 @@ The application is containerized and deployed on **Google Cloud Run**.
 4. **Start Cloud SQL Proxy:**
    Download and run the Cloud SQL Proxy to connect to the database locally:
    ```bash
-   ./cloud-sql-proxy sa-learning-1:us-central1:ai-research-pulse-db
+   ./cloud-sql-proxy your-gcp-project-id:your-gcp-region:your-cloud-sql-instance
    ```
 
 5. **Run the development server:**
