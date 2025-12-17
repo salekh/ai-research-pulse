@@ -75,7 +75,7 @@ The application is containerized and deployed on **Google Cloud Run**.
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/your-github-username/ai-research-pulse.git
+   git clone https://github.com/salekh/ai-research-pulse.git
    cd ai-research-pulse
    ```
 
