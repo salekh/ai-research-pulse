@@ -132,7 +132,7 @@ export function NewsCard({ article, onSave, isSaved = false }: NewsCardProps) {
       </CardHeader>
       <CardContent className="flex-grow px-5 pb-4">
         <p className="text-sm text-[#444746] line-clamp-3 leading-relaxed">
-          {article.snippet.replace(/<[^>]*>?/gm, '')}
+          {(article.snippet || '').replace(/<[^>]*>?/gm, '')}
         </p>
 
         {article.tags && article.tags.length > 0 && (

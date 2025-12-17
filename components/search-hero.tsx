@@ -115,14 +115,23 @@ export function SearchHero({ onSearch, onShowFeed }: SearchHeroProps) {
         </form>
       </div>
 
-      {/* I'm Feeling Lucky Button */}
-      <div className="mt-8 animate-in fade-in duration-700 delay-300">
+      {/* Action Buttons */}
+      <div className="mt-8 flex items-center gap-4 animate-in fade-in duration-700 delay-300">
         <Button
           variant="outline"
           onClick={() => window.location.href = '/api/lucky'}
           className="bg-[#f8f9fa] border border-[#f8f9fa] hover:border-[#dadce0] hover:shadow-sm text-[#3c4043] font-medium px-6 py-2 rounded-md transition-all"
         >
           I&apos;m Feeling Lucky
+        </Button>
+
+        <Button
+          variant="outline"
+          onClick={() => window.location.href = '/insights'}
+          className="bg-white border border-gray-200 hover:border-primary/50 hover:text-primary hover:shadow-sm text-gray-700 font-medium px-6 py-2 rounded-md transition-all gap-2"
+        >
+          <Sparkles className="w-4 h-4" />
+          Insights
         </Button>
       </div>
 

@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface CompanyLogoProps {
-  company: 'Google Research' | 'Google DeepMind' | 'OpenAI' | 'Anthropic' | 'Microsoft Research' | 'Meta AI';
+  company: 'Google Research' | 'Google DeepMind' | 'OpenAI' | 'Anthropic' | 'Microsoft Research' | 'Meta AI' | 'x.AI';
   className?: string;
 }
 
@@ -63,7 +63,16 @@ export function CompanyLogo({ company, className = "w-5 h-5" }: CompanyLogoProps
           <path id="Logo2" fill="url(#Grad_Logo2)" d="m82.35,31.23c-12.27,0-22.69,8.61-31.41,21.78-12.33,18.61-19.88,46.33-19.88,72.95 0,10.98 2.41,19.41 5.56,24.51l-26.48,17.44c-6.8-11.31-10.14-26.15-10.14-43.06 0-30.75 8.44-62.8 24.49-87.55 14.24-21.95 34.79-37.3 58.36-37.3z"/>
         </svg>
       );
+    case 'x.AI':
+      return (
+        <img src="/assets/xai.svg" alt="xAI" className={className} />
+      );
     default:
-      return <div className={`bg-gray-200 rounded-full ${className}`} />;
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="10" fill="#E5E7EB"/>
+          <path d="M12 6v12M6 12h12" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+      );
   }
 }

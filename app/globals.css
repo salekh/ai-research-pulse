@@ -33,10 +33,14 @@
   
   /* Font Stack */
     --font-sans: var(--font-roboto);
+--popover: #FFFFFF;
+  --popover-foreground: #1F1F1F;
 }
 
 @theme {
   --font-sans: var(--font-sans);
+  --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
 }
 
 body {

@@ -1,27 +1,26 @@
 import { NextResponse } from 'next/server';
-import Parser from 'rss-parser';
-import * as cheerio from 'cheerio';
-import { saveArticles, getArticles, getAllArticlesForSearch, Article } from '@/lib/db';
+import { getArticles, searchArticlesVector, Article } from '@/lib/db';
 import { VertexAI } from '@google-cloud/vertexai';
-import { cosineSimilarity } from '@/lib/utils';
+import { GoogleAuth } from 'google-auth-library';
+import { ingestAll } from '@/lib/ingestion';
 import { rerankArticles } from '@/lib/reranker';
 
 export const dynamic = 'force-dynamic';
 
-const parser = new Parser();
-
-// Initialize Vertex AI
+// Initialize Vertex AI (needed for reranking if used here, or we can move reranking to lib too)
 const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT;
 const location = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
-console.log('Initializing Vertex AI with project:', project, 'location:', location);
 const vertex_ai = project ? new VertexAI({ project, location }) : null;
-if (!vertex_ai) console.warn('Vertex AI not initialized: Missing project ID');
-
-import { GoogleAuth } from 'google-auth-library';
-
-// ... existing code ...
 
 async function getEmbeddings(texts: string[]) {
+  // ... (Keep this helper if needed for query embedding, or move to lib/ingestion/utils)
+  // Actually, let's duplicate it or move it. For now, keeping it here is fine, or better:
+  // We can export generateEmbedding from lib/ingestion and use it here?
+  // But generateEmbedding takes an Article.
+  // Let's keep a simple getEmbeddings here or make a shared lib/vertex.ts.
+  // To be clean, I'll keep it here for now to avoid breaking too many things at once, 
+  // but I'll strip out the unused ingestion code.
+  
   try {
     const auth = new GoogleAuth({
       scopes: ['https://www.googleapis.com/auth/cloud-platform']
@@ -48,8 +47,6 @@ async function getEmbeddings(texts: string[]) {
       );
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Vertex AI REST Error:', errorText);
         throw new Error(`Vertex AI API failed: ${response.statusText}`);
       }
 
@@ -64,215 +61,46 @@ async function getEmbeddings(texts: string[]) {
   }
 }
 
-async function generateTags(article: Article): Promise<string[]> {
-  if (!vertex_ai) return [];
-  try {
-    const model = vertex_ai.preview.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      generationConfig: { responseMimeType: 'application/json' }
-    });
-    
-    const prompt = `Analyze this article snippet and title. Generate 3-4 relevant technical tags (e.g., "LLM", "Computer Vision", "Reinforcement Learning"). Return a JSON array of strings.
-    
-    Title: ${article.title}
-    Snippet: ${article.snippet}`;
-
-    const result = await model.generateContent(prompt);
-    const text = result.response.candidates?.[0].content.parts[0].text;
-    if (text) {
-      // Clean up markdown code blocks if present
-      const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      return JSON.parse(cleanText);
-    }
-  } catch (e) {
-    console.error('Error generating tags:', e);
-  }
-  return [];
-}
-
-async function fetchRSS(url: string, source: Article['source']): Promise<Article[]> {
-  try {
-    const feed = await parser.parseURL(url);
-    return feed.items.map((item) => {
-      let tags: string[] = [];
-      if (item.categories) {
-        tags = item.categories.slice(0, 4);
-      }
-      return {
-        title: item.title || 'No title',
-        link: item.link || '',
-        date: item.isoDate || (item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString()),
-        source,
-        snippet: item.contentSnippet || item.content || '',
-        tags,
-      };
-    });
-  } catch (error) {
-    console.error(`Error fetching RSS from ${source}:`, error);
-    return [];
-  }
-}
-
-async function scrapeAnthropic(url: string, category: string): Promise<Article[]> {
-  try {
-    const response = await fetch(url);
-    const html = await response.text();
-    const $ = cheerio.load(html);
-    const articles: Article[] = [];
-
-    // Anthropic's new design seems to wrap the whole card in an anchor tag.
-    // We look for any anchor that points to a detailed page.
-    const potentialLinks = $('a');
-
-    console.log(`[Anthropic] Found ${potentialLinks.length} total links on ${url}`);
-
-    potentialLinks.each((_, element) => {
-       const linkEl = $(element);
-       const href = linkEl.attr('href');
-       
-       if (!href) return;
-
-       // Check for relevant paths, allowing absolute URLs too
-       const isRelevant = href.includes('/news/') || href.includes('/research/') || href.includes('/engineering/') || href.includes('/product/');
-       if (!isRelevant) return;
-
-       // Filter out index pages or non-article links
-       if (href === '/research' || href === '/news' || href === '/engineering' || href.includes('/archive')) return;
-       if (href.endsWith('/research') || href.endsWith('/news') || href.endsWith('/engineering')) return;
-
-       // Check if we already have this link (deduplication within the same page scrape)
-       const fullLink = href.startsWith('http') ? href : `https://www.anthropic.com${href}`;
-       if (articles.some(a => a.link === fullLink)) return;
-
-       const container = linkEl;
-       
-       // Helper to get text with spaces
-       // Iterate over child nodes to handle mashed text
-       let fullText = '';
-       container.contents().each((_, node) => {
-         if (node.type === 'text') {
-           fullText += $(node).text().trim() + ' ';
-         } else if (node.type === 'tag') {
-           fullText += $(node).text().trim() + ' ';
-         }
-       });
-       fullText = fullText.replace(/\s+/g, ' ').trim();
-       
-       const dateRegex = /([A-Z][a-z]{2}\s+\d{1,2},\s+\d{4})/;
-       const dateMatch = fullText.match(dateRegex);
-       let date = dateMatch ? new Date(dateMatch[0]).toISOString() : new Date().toISOString();
-       
-       let title = container.find('h3, h2, h4').first().text().trim();
-       
-       if (!title) {
-         let remainingText = fullText;
-         if (dateMatch) {
-           remainingText = remainingText.replace(dateMatch[0], '').trim();
-         }
-         
-         const pText = container.find('p').text().trim();
-         if (pText) {
-            remainingText = remainingText.replace(pText, '').trim();
-            title = remainingText;
-         } else {
-            title = remainingText;
-         }
-       }
-       
-       const categories = ['Interpretability', 'Alignment', 'Societal Impacts', 'Product', 'Policy', 'Economic Research', 'Security', 'Engineering'];
-       for (const cat of categories) {
-         if (title.startsWith(cat) && title.length > cat.length) {
-           title = title.substring(cat.length).trim();
-         }
-       }
-
-       let snippet = container.find('p').text().trim();
-       if (!snippet) {
-         snippet = `Latest update from Anthropic ${category}`;
-       }
-
-       if (title && href) {
-         articles.push({
-           title,
-           link: fullLink,
-           date,
-           source: 'Anthropic',
-           snippet,
-         });
-       }
-    });
-
-    console.log(`[Anthropic] Scraped ${articles.length} valid articles from ${url}`);
-    if (articles.length > 0) {
-      console.log(`[Anthropic] Example: ${articles[0].title} (${articles[0].link}) Date: ${articles[0].date}`);
-    }
-
-    return articles.slice(0, 10);
-  } catch (error) {
-    console.error(`Error scraping Anthropic ${category}:`, error);
-    return [];
-  }
-}
-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('q');
   const refresh = searchParams.get('refresh') === 'true';
 
   try {
-    // If refresh is requested, scrape new articles
+    // If refresh is requested, trigger ingestion
     if (refresh) {
-      console.log('Refreshing articles...');
-      const allArticles = await Promise.all([
-        fetchRSS('https://research.google/blog/rss/', 'Google Research'),
-        fetchRSS('https://deepmind.google/blog/rss.xml', 'Google DeepMind'),
-        fetchRSS('https://openai.com/news/rss.xml', 'OpenAI'),
-        scrapeAnthropic('https://www.anthropic.com/engineering', 'Engineering'),
-        scrapeAnthropic('https://www.anthropic.com/research', 'Research'),
-        fetchRSS('https://www.microsoft.com/en-us/research/feed/', 'Microsoft Research'),
-        fetchRSS('https://ai.meta.com/blog/rss.xml/', 'Meta AI'),
-      ]);
-
-      const flatArticles = allArticles.flat();
-
-      
-      // Process articles (tags, embeddings) in background if possible, 
-      // but for now we'll just save them to ensure they are in DB.
-      // In a real serverless env, we might need a queue. 
-      // Here we await to ensure data is ready for the next fetch or immediate return if we wanted.
-      // But to keep it fast, we might want to just save and return.
-      // However, the user wants "load DB articles already", so the *first* call shouldn't refresh.
-      
-      await saveArticles(flatArticles);
-      
-      // Process missing tags/embeddings after saving
-      // This might take time, so maybe we don't await it fully if we want to be fast?
-      // But 'refresh' implies we want new data.
-      // Let's do it:
-      const saved = getArticles();
-      for (const article of saved) {
-        if (!article.tags || article.tags.length === 0 || !article.embedding) {
-           // We can process in background or just process a few.
-           // For now, let's just process to ensure quality.
-           // Or better: The refresh call is the "background" call from frontend.
-           if (!article.tags || article.tags.length === 0) {
-             const tags = await generateTags(article);
-             if (tags.length > 0) {
-               saveArticles([{ ...article, tags: tags }]);
-             }
-           }
-           if (!article.embedding) {
-             const embedding = await getEmbeddings([`${article.title} ${article.snippet}`]);
-             if (embedding.length > 0) {
-               saveArticles([{ ...article, embedding: embedding[0] }]);
-             }
-           }
-        }
-      }
+      await ingestAll(true);
     }
 
     // Always return articles from DB
     let articles: Article[] = [];
+    
+    // Calculate start date based on timeRange
+    const timeRange = searchParams.get('timeRange') || '2w'; // Default to 2 weeks
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = 30;
+    const offset = (page - 1) * limit;
+
+    let startDate: Date | undefined;
+    
+    if (timeRange !== 'all') {
+      const now = new Date();
+      startDate = new Date();
+      switch (timeRange) {
+        case '2w':
+          startDate.setDate(now.getDate() - 14);
+          break;
+        case '1m':
+          startDate.setMonth(now.getMonth() - 1);
+          break;
+        case '1y':
+          startDate.setFullYear(now.getFullYear() - 1);
+          break;
+        default:
+          startDate.setDate(now.getDate() - 14); // Default 2w
+      }
+    }
+
     if (query) {
       let queryEmbedding: number[] | null = null;
       try {
@@ -284,48 +112,30 @@ export async function GET(request: Request) {
         console.error('Failed to get query embedding:', e);
       }
 
-      const all = getAllArticlesForSearch();
-      const withScores = all.map(article => {
-        let score = 0;
+      if (queryEmbedding) {
+        // Use pgvector search
+        // When searching, we want the best matches regardless of time, unless specifically filtered?
+        // User requested: "search across articles from the whole time range, not only recent ones"
+        // So we ignore startDate for vector search.
+        articles = await searchArticlesVector(queryEmbedding, limit);
         
-        // Vector similarity
-        if (article.embedding && queryEmbedding) {
-          score = cosineSimilarity(queryEmbedding, article.embedding);
+        // Rerank top results if Vertex AI is available
+        if (vertex_ai) {
+             articles = await rerankArticles(query, articles);
         }
-        
-        // Keyword boosting
-        const lowerQuery = query.toLowerCase();
-        const lowerTitle = article.title.toLowerCase();
-        const lowerSnippet = article.snippet.toLowerCase();
-        
-        if (lowerTitle.includes(lowerQuery)) score += 0.5;
-        else if (lowerQuery.split(' ').some(w => w.length > 3 && lowerTitle.includes(w))) score += 0.3; // Increased partial boost
-        
-        if (lowerSnippet.includes(lowerQuery)) score += 0.3; // Increased snippet boost
-        
-        return { ...article, score };
-      });
-      
-      articles = withScores
-        .filter(a => a.score > 0.1) // Significantly lowered threshold to ensure results
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 100); // Get top 100 candidates for reranking
-
-      // Rerank using Vertex AI
-      articles = await rerankArticles(query, articles);
+      } else {
+        // Fallback to simple DB search if embedding fails (or if we want keyword search, but we don't have it yet)
+        // For now, just return recent articles if embedding fails, or maybe we should implement keyword search?
+        // Let's fallback to recent for now to avoid empty results if embedding fails.
+        articles = await getArticles(limit, startDate, offset);
+      }
     } else {
-      articles = getArticles();
+      articles = await getArticles(limit, startDate, offset);
     }
 
-    // Explicitly sort by date (latest first) ONLY if we are not searching
-    // If searching, we want relevance (which is already done by reranker or local score)
-    if (!query) {
-      articles.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }
-
-    return NextResponse.json({ articles });
-  } catch (e) {
-    console.error('Error in GET /api/news:', e);
+    return NextResponse.json({ articles, hasMore: articles.length === limit });
+  } catch (error) {
+    console.error('Error in GET /api/news:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

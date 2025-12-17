@@ -6,8 +6,17 @@ import { TrendChart } from './trend-chart';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { RefreshCw, Search, Bookmark, Newspaper, TrendingUp } from 'lucide-react';
+import { RefreshCw, Search, Bookmark, Newspaper, TrendingUp, ChevronDown, Filter } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { InsightsView } from './insights-view';
+import { Sparkles } from 'lucide-react';
+import { CompanyLogo } from './company-logo';
 
 interface Article {
   title: string;
@@ -27,35 +36,56 @@ export function NewsFeed({ initialQuery = '' }: { initialQuery?: string }) {
   const [activeTab, setActiveTab] = useState('feed');
 
 
+  const [timeRange, setTimeRange] = useState('2w');
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+
+  const timeRangeLabels: Record<string, string> = {
+    '2w': '2 Weeks',
+    '1m': '1 Month',
+    '1y': '1 Year',
+    'all': 'All Time',
+  };
+
   useEffect(() => {
     // 1. Load initial data (fast, from DB)
-    fetchNews(searchQuery, false);
+    fetchNews(searchQuery, false, timeRange, 1);
 
     // 2. Trigger background refresh (slow, scrapes new data)
     // Only do this if we are not searching (i.e. viewing the feed)
     if (!searchQuery) {
-      fetchNews(searchQuery, true);
+      fetchNews(searchQuery, true, timeRange, 1);
     }
   }, []); // Run once on mount
 
-  // When search query changes, we might want to just search DB first?
-  // Or if the user hits enter, we search.
-  // The handleSearch below calls fetchNews(searchQuery).
-  // We should update fetchNews to handle the refresh param.
+  // When timeRange changes, refetch and reset page
+  useEffect(() => {
+    setPage(1);
+    fetchNews(searchQuery, false, timeRange, 1);
+  }, [timeRange]);
 
-  const fetchNews = async (query = '', refresh = false) => {
-    if (!refresh) setLoading(true); // Only show loading spinner for initial load or explicit search
+  const fetchNews = async (query = '', refresh = false, range = timeRange, pageNum = 1) => {
+    if (!refresh && pageNum === 1) setLoading(true); // Only show loading spinner for initial load or explicit search
     setError(null);
     try {
-      let url = query ? `/api/news?q=${encodeURIComponent(query)}` : '/api/news';
-      if (refresh) {
-        url += (url.includes('?') ? '&' : '?') + 'refresh=true';
-      }
+      const params = new URLSearchParams();
+      if (query) params.append('q', query);
+      if (refresh) params.append('refresh', 'true');
+      if (range) params.append('timeRange', range);
+      params.append('page', pageNum.toString());
+
+      const url = `/api/news?${params.toString()}`;
       
       const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch news');
       const data = await res.json();
-      setArticles(data.articles);
+      
+      if (pageNum === 1) {
+        setArticles(data.articles);
+      } else {
+        setArticles(prev => [...prev, ...data.articles]);
+      }
+      setHasMore(data.hasMore);
     } catch (err) {
       console.error(err);
       if (!refresh) setError('Failed to load news feeds. Please try again later.');
@@ -64,11 +94,47 @@ export function NewsFeed({ initialQuery = '' }: { initialQuery?: string }) {
     }
   };
 
+  const handleLoadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchNews(searchQuery, false, timeRange, nextPage);
+  };
+
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      fetchNews(searchQuery);
+      setPage(1);
+      fetchNews(searchQuery, false, timeRange, 1);
     }
   };
+
+  // ... existing handlers ...
+
+  // ... inside return ...
+  
+  // After article grid:
+  /*
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {loading && page === 1 ? (
+        // ... skeletons ...
+      ) : (
+        filteredArticles.map(...)
+      )}
+    </div>
+    
+    {hasMore && !loading && (
+      <div className="flex justify-center mt-8">
+        <Button variant="outline" onClick={handleLoadMore} className="rounded-full">
+          Load More
+        </Button>
+      </div>
+    )}
+  */
+  
+  // I need to insert the button in the JSX.
+  // I'll replace the return block or part of it.
+  // The current replacement is for the logic part.
+  // I will do a separate replacement for the JSX to be safe.
+
 
   const handleSaveArticle = (article: Article) => {
     if (!savedArticles.some(a => a.link === article.link)) {
@@ -89,23 +155,45 @@ export function NewsFeed({ initialQuery = '' }: { initialQuery?: string }) {
     return matchesSource;
   });
 
-  const sources = Array.from(new Set(articles.map(a => a.source)));
+  const sources = Array.from(new Set(articles.map(a => a.source))).filter(s => s);
 
   return (
     <div className="space-y-8">
       <Tabs defaultValue="feed" className="w-full" onValueChange={setActiveTab}>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <TabsList className="bg-gray-100 p-1 rounded-full">
-            <TabsTrigger 
-              value="feed" 
-              className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-full px-6 transition-all duration-300"
-            >
-              <Newspaper className="w-4 h-4 mr-2" />
-              Latest News
-            </TabsTrigger>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <TabsTrigger 
+                  value="feed" 
+                  className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-full px-6 transition-all duration-300 flex items-center gap-2"
+                >
+                  <Newspaper className="w-4 h-4" />
+                  Latest News
+                  <span className="text-xs opacity-60 ml-1">({timeRangeLabels[timeRange]})</span>
+                  <ChevronDown className="w-3 h-3 opacity-50" />
+                </TabsTrigger>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => setTimeRange('2w')}>
+                  Last 2 Weeks
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTimeRange('1m')}>
+                  Last 1 Month
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTimeRange('1y')}>
+                  Last 1 Year
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTimeRange('all')}>
+                  All Time
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <TabsTrigger value="saved" className="rounded-full px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm">
               <Bookmark className="w-4 h-4 mr-2" /> Saved ({savedArticles.length})
             </TabsTrigger>
+
             <TabsTrigger 
               value="trends" 
               className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-full px-6 transition-all duration-300"
@@ -113,127 +201,104 @@ export function NewsFeed({ initialQuery = '' }: { initialQuery?: string }) {
               <TrendingUp className="w-4 h-4 mr-2" />
               Trends
             </TabsTrigger>
+
+            <TabsTrigger 
+              value="insights" 
+              className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-full px-6 transition-all duration-300"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              Insights
+            </TabsTrigger>
           </TabsList>
 
-          <div className="relative w-full md:w-64">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input 
-              placeholder="Search topics (Press Enter)..." 
-              className="pl-9 rounded-full bg-white border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={handleSearch}
-            />
+          <div className="flex items-center gap-2">
+             <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="rounded-full px-4 gap-2 border-gray-200">
+                  {filter ? (
+                    <CompanyLogo company={filter as any} className="w-4 h-4" />
+                  ) : (
+                    <Filter className="w-4 h-4 text-gray-500" />
+                  )}
+                  <span className="text-sm text-gray-700">{filter || 'All Labs'}</span>
+                  <ChevronDown className="w-3 h-3 text-gray-400" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setFilter(null)}>
+                  All Labs
+                </DropdownMenuItem>
+                {sources.map(source => (
+                  <DropdownMenuItem key={source} onClick={() => setFilter(source)} className="gap-2">
+                    <CompanyLogo company={source} className="w-4 h-4" />
+                    {source}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="relative w-full md:w-64">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                type="text"
+                placeholder="Search news..."
+                className="pl-10 rounded-full border-gray-200 focus:border-primary focus:ring-primary"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleSearch}
+              />
+            </div>
           </div>
         </div>
 
         <TabsContent value="feed" className="space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 w-full sm:w-auto no-scrollbar mask-linear-fade">
-              <Button 
-                variant={filter === null ? "default" : "outline"}
-                size="sm"
-                onClick={() => setFilter(null)}
-                className={`rounded-full border-none ${filter === null ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-              >
-                All
-              </Button>
-              {sources.map(source => (
-                <Button
-                  key={source}
-                  variant={filter === source ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setFilter(source)}
-                  className={`rounded-full border-none whitespace-nowrap ${filter === source ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                >
-                  {source}
-                </Button>
-              ))}
-            </div>
-            
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => fetchNews(searchQuery)} 
-              disabled={loading}
-              className="text-blue-600 hover:bg-blue-50 rounded-full"
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          </div>
-
-          {error && (
-            <div className="p-4 bg-red-50 text-red-600 rounded-xl text-center border border-red-100">
-              {error}
-            </div>
-          )}
-
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="h-[280px] border border-gray-100 rounded-2xl p-6 space-y-4 bg-white">
-                  <div className="flex justify-between">
-                    <Skeleton className="h-6 w-24 rounded-md" />
-                    <Skeleton className="h-4 w-16" />
-                  </div>
-                  <Skeleton className="h-6 w-3/4" />
-                  <Skeleton className="h-24 w-full" />
-                  <div className="flex justify-between pt-4">
-                    <Skeleton className="h-8 w-24 rounded-full" />
-                    <Skeleton className="h-8 w-24 rounded-full" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {loading && page === 1 ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="space-y-4">
+                  <Skeleton className="h-48 w-full rounded-xl" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredArticles.map((article, index) => (
+              ))
+            ) : (
+              filteredArticles.map((article, i) => (
                 <NewsCard 
-                  key={`${article.link}-${index}`} 
-                  article={article} 
-                  onSave={handleSaveArticle}
+                  key={`${article.link}-${i}`} 
+                  article={article}
+                  onSave={() => handleSaveArticle(article)}
                   isSaved={savedArticles.some(a => a.link === article.link)}
                 />
-              ))}
-            </div>
-          )}
-          
-          {!loading && filteredArticles.length === 0 && !error && (
-            <div className="text-center py-20">
-              <div className="bg-gray-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                <Search className="w-6 h-6 text-gray-400" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900">No articles found</h3>
-              <p className="text-gray-500">Try adjusting your search or filters.</p>
+              ))
+            )}
+          </div>
+
+          {hasMore && !loading && (
+            <div className="flex justify-center mt-8">
+              <Button variant="outline" onClick={handleLoadMore} className="rounded-full">
+                Load More
+              </Button>
             </div>
           )}
         </TabsContent>
 
-        <TabsContent value="saved">
+        <TabsContent value="saved" className="space-y-6">
           {savedArticles.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-200">
-              <div className="bg-blue-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                <Bookmark className="w-6 h-6 text-blue-500" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900">No saved articles yet</h3>
-              <p className="text-gray-500 max-w-sm mx-auto mt-2">
-                Tap the bookmark icon on any article to save it here for later reading.
-              </p>
+            <div className="text-center py-12 text-gray-500">
+              <Bookmark className="w-12 h-12 mx-auto mb-4 opacity-20" />
+              <p>No saved articles yet</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {savedArticles.map((article, index) => (
-                <div key={`saved-${index}`} className="relative group">
-                  <NewsCard article={article} />
-                  <button 
-                    onClick={() => handleRemoveArticle(article)}
-                    className="absolute top-4 right-4 bg-white/90 p-1.5 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:bg-red-50"
-                    title="Remove from saved"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c0 1 1 2 2 2v2"/></svg>
-                  </button>
-                </div>
+              {savedArticles.map((article, i) => (
+                <NewsCard 
+                  key={`${article.link}-${i}`} 
+                  article={article}
+                  onSave={() => handleRemoveArticle(article)}
+                  isSaved={true}
+                />
               ))}
             </div>
           )}
@@ -247,6 +312,10 @@ export function NewsFeed({ initialQuery = '' }: { initialQuery?: string }) {
             </div>
             <TrendChart articles={articles} />
           </div>
+        </TabsContent>
+
+        <TabsContent value="insights">
+          <InsightsView />
         </TabsContent>
       </Tabs>
     </div>
