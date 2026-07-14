@@ -7,7 +7,7 @@ import { Article } from './db';
 // in Docker (where env vars like GOOGLE_CLOUD_PROJECT aren't set).
 // ---------------------------------------------------------------------------
 const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT;
-const location = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
+const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
 
 let _ai: GoogleGenAI | null = null;
 function getAI(): GoogleGenAI {

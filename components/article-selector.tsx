@@ -115,7 +115,7 @@ export function ArticleSelector({ onGenerate, isGenerating }: ArticleSelectorPro
                     {article.title}
                   </p>
                   <div className="flex items-center gap-2 mt-1.5">
-                    <CompanyLogo company={article.source} className="w-3.5 h-3.5" />
+                    <CompanyLogo company={article.source as any} className="w-3.5 h-3.5" />
                     <span className="text-[10px] font-medium text-gray-500">{article.source}</span>
                     <span className="text-[10px] text-gray-300">•</span>
                     <span className="text-[10px] text-gray-400">

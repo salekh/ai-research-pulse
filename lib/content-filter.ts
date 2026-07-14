@@ -5,7 +5,7 @@ import { Article } from './db';
 // Vertex AI client (ADC — same auth pattern as all other modules)
 // ---------------------------------------------------------------------------
 const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT;
-const location = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
+const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
 
 const vertex = project ? new VertexAI({ project, location }) : null;
 

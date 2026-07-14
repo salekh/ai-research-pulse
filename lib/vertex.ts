@@ -1,7 +1,7 @@
 import { GoogleAuth } from 'google-auth-library';
 
 const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT;
-const location = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
+const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
 
 // Module-level singleton — the google-auth-library caches tokens internally,
 // but we also avoid re-allocating the client object on every call.

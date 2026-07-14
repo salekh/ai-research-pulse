@@ -15,7 +15,7 @@ const parser = new Parser({
 // Vertex AI client for tag generation (uses ADC / env vars)
 // ---------------------------------------------------------------------------
 const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT;
-const location = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
+const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
 const vertex_ai = project ? new VertexAI({ project, location }) : null;
 
 // Module-level model for tag generation — reused across all calls

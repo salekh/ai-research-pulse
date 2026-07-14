@@ -6,7 +6,7 @@ import * as cheerio from 'cheerio';
 // Module-level client
 // ---------------------------------------------------------------------------
 const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT;
-const location = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
+const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
 
 const vertexModel = project
   ? new VertexAI({ project, location }).getGenerativeModel({
