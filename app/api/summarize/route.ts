@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     const project = process.env.GOOGLE_CLOUD_PROJECT || 'sa-learning-1';
     const location = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
     const vertex_ai = new VertexAI({ project: project, location: location });
-    const model = vertex_ai.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = vertex_ai.getGenerativeModel({ model: 'gemini-3.5-flash' });
 
     const prompt = `Please provide a concise, 2-3 sentence summary of the following AI research article. Focus on the key innovation and its potential impact.
     

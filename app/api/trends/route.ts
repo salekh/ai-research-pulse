@@ -35,7 +35,7 @@ export async function POST(req: Request) {
 
     const vertex_ai = new VertexAI({ project: project, location: location });
     const model = vertex_ai.preview.getGenerativeModel({
-      model: 'gemini-2.5-pro', // User requested gemini-2.5-pro
+      model: 'gemini-3.5-flash',
       generationConfig: {
         'maxOutputTokens': 8192, // Increased for comprehensive report
         'temperature': 0.4,

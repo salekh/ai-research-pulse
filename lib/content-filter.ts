@@ -8,7 +8,7 @@ const ai = new GoogleGenAI({
 export async function filterTechnicalArticles(articles: Article[]): Promise<Article[]> {
   if (articles.length === 0) return [];
 
-  const modelName = "gemini-2.5-flash";
+  const modelName = "gemini-3.5-flash";
   
   // Process in batches of 20 to avoid token limits and ensure reliability
   const batchSize = 20;

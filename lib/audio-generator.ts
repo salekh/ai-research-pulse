@@ -9,7 +9,7 @@ const ai = new GoogleGenAI({
 export type InsightType = 'overview' | 'podcast';
 
 export async function generateTranscript(articles: Article[], type: InsightType): Promise<string> {
-  const modelName = "gemini-2.5-flash";
+  const modelName = "gemini-3.5-flash";
   let prompt = "";
   
   const articlesText = articles.map(a => `Title: ${a.title}\nSource: ${a.source}\nSnippet: ${a.snippet}\n`).join('\n---\n');
@@ -54,7 +54,7 @@ export async function generateTranscript(articles: Article[], type: InsightType)
 }
 
 export async function synthesizeAudio(transcript: string, type: InsightType): Promise<Buffer> {
-  const ttsModel = "gemini-2.5-flash-preview-tts";
+  const ttsModel = "gemini-3.5-flash-preview-tts";
   
   let speechConfig: any = {};
 
