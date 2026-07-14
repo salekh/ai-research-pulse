@@ -35,15 +35,17 @@ export function TrendChart({ articles }: { articles: Article[] }) {
     setError(null);
 
     try {
-      // Prepare a concise list of titles for analysis
-      const titles = articles.slice(0, 50).map(a => a.title); // Increased to 50 for better coverage
+      // Send titles, snippets, and sources for richer trend analysis
+      const subset = articles.slice(0, 50);
+      const titles = subset.map(a => a.title);
+      const snippets = subset.map(a => a.snippet);
       
       const res = await fetch('/api/trends', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ titles }),
+        body: JSON.stringify({ titles, snippets }),
       });
 
       if (!res.ok) {

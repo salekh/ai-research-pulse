@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { VertexAI } from '@google-cloud/vertexai';
 
 // ---------------------------------------------------------------------------
-// Module-level client — instantiated once, reused across all requests
+// Module-level client
 // ---------------------------------------------------------------------------
 const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT;
 const location = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
@@ -12,9 +12,8 @@ const vertexModel = project
       model: 'gemini-3.5-flash',
       generationConfig: {
         maxOutputTokens: 8192,
-        temperature: 0.4,
-        topP: 1,
-        topK: 32,
+        temperature: 0.3,
+        topP: 0.95,
         responseMimeType: 'application/json',
       },
     })
@@ -32,20 +31,69 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { titles } = await req.json();
+    const { titles, snippets, sources } = await req.json();
 
     if (!titles || !Array.isArray(titles)) {
       return NextResponse.json({ error: 'Invalid titles provided' }, { status: 400 });
     }
 
-    const prompt = `Analyze these AI research titles and generate a comprehensive, full-page style trend report.
+    // Build rich article context — use snippets and sources if available
+    const articlesContext = titles
+      .map((title: string, i: number) => {
+        const parts = [`[${i + 1}] "${title}"`];
+        if (sources?.[i]) parts.push(`(${sources[i]})`);
+        if (snippets?.[i]) parts.push(`\n    ${snippets[i].substring(0, 200)}`);
+        return parts.join(' ');
+      })
+      .join('\n');
 
-Return a JSON object with keys:
-- 'trends': array of objects with 'name' (topic) and 'value' (estimated relevance/frequency score from 1-100)
-- 'summary': string (A detailed, multi-paragraph markdown report. Use H3 (###) for section headers. Include sections like "Executive Summary", "Key Emerging Themes", "Strategic Implications", and "Future Outlook". Make it sound professional and insightful.)
+    const prompt = `You are a senior AI research strategist analyzing ${titles.length} recent publications from major AI labs (Google, OpenAI, Anthropic, Meta, Microsoft, x.AI).
 
-Titles:
-${titles.join('\n')}`;
+Perform a rigorous trend analysis and return a JSON object with these keys:
+
+{
+  "trends": [
+    {
+      "name": "Topic Name (2-4 words, e.g. 'Long-Context Models')",
+      "value": <number 1-100>,
+      "signal": "<one of: emerging | growing | established | declining>",
+      "labs": ["List of labs publishing in this area from the input"]
+    }
+  ],
+  "summary": "<A detailed markdown report (see structure below)>"
+}
+
+**Scoring rubric for 'value':**
+- Frequency (40%): How many articles touch this topic?
+- Breadth (30%): How many different labs are publishing on it?
+- Novelty (30%): Is this a new direction (score higher) or well-trodden ground (score lower)?
+
+**Signal definitions:**
+- emerging: <3 papers but from multiple labs — early convergence signal
+- growing: 3+ papers, increasing lab diversity — active area of investment
+- established: Many papers, all major labs — core infrastructure/capability
+- declining: Fewer papers than expected given historical activity
+
+**Summary structure (use ### headers, write in markdown):**
+### Executive Summary
+2-3 sentences on the dominant theme across all articles.
+
+### Cross-Lab Convergence
+Which topics are multiple labs independently pursuing? What does this signal about the field's direction?
+
+### Key Emerging Themes
+What's new or surprising in this batch? Highlight topics in "emerging" or "growing" status.
+
+### Notable Gaps
+What major areas are conspicuously absent from recent publications?
+
+### Strategic Outlook
+What do these trends suggest about the next 6-12 months?
+
+Return exactly 5-8 trends, sorted by 'value' descending.
+
+Articles:
+${articlesContext}`;
 
     const result = await vertexModel.generateContent(prompt);
     const text = result.response.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -53,7 +101,6 @@ ${titles.join('\n')}`;
     if (!text) throw new Error('No response from Gemini');
 
     const data = JSON.parse(text);
-    // Backward-compat: if model returns a bare array, wrap it
     if (Array.isArray(data)) {
       return NextResponse.json({ trends: data, summary: 'Trends analyzed from recent articles.' });
     }

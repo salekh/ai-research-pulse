@@ -18,6 +18,17 @@ const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT;
 const location = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
 const vertex_ai = project ? new VertexAI({ project, location }) : null;
 
+// Module-level model for tag generation — reused across all calls
+const tagModel = vertex_ai
+  ? vertex_ai.preview.getGenerativeModel({
+      model: 'gemini-3.5-flash',
+      generationConfig: {
+        temperature: 0.1,
+        responseMimeType: 'application/json',
+      },
+    })
+  : null;
+
 if (!vertex_ai) console.warn('[ingestion] Vertex AI not initialised: Missing project ID');
 
 // ---------------------------------------------------------------------------
@@ -207,26 +218,44 @@ async function processMissingMetadata(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Tag generation via Gemini (Vertex AI)
+// Canonical tag taxonomy — model must choose from this list
 // ---------------------------------------------------------------------------
-async function generateTags(article: Article): Promise<string[]> {
-  if (!vertex_ai) return [];
-  try {
-    const model = vertex_ai.preview.getGenerativeModel({
-      model: 'gemini-3.5-flash',
-      generationConfig: { responseMimeType: 'application/json' },
-    });
+const TAG_TAXONOMY = [
+  'LLM', 'Vision', 'Multimodal', 'Audio', 'Video',
+  'RL', 'Robotics', 'Agents',
+  'Safety', 'Alignment', 'Interpretability',
+  'Efficiency', 'Quantization', 'Distillation',
+  'Training', 'Fine-tuning', 'RLHF',
+  'Inference', 'Serving', 'Systems',
+  'Data', 'Synthetic Data', 'Evaluation',
+  'RAG', 'Retrieval', 'Search',
+  'Code', 'Math', 'Reasoning',
+  'Science', 'Healthcare', 'Climate',
+  'Diffusion', 'Generation', 'World Models',
+];
 
-    const prompt = `Analyze this article snippet and title. Generate 3-4 relevant technical tags (e.g., "LLM", "Computer Vision", "Reinforcement Learning"). Return a JSON array of strings.
+async function generateTags(article: Article): Promise<string[]> {
+  if (!tagModel) return [];
+  try {
+    const prompt = `Classify this AI research article into 2-4 tags from the following taxonomy. Return a JSON array of strings.
+
+Allowed tags: ${TAG_TAXONOMY.join(', ')}
 
 Title: ${article.title}
-Snippet: ${article.snippet}`;
+Snippet: ${article.snippet?.substring(0, 300) || '(no snippet)'}
 
-    const result = await model.generateContent(prompt);
+Rules:
+- Choose 2-4 tags that best describe the article's technical content
+- Use ONLY tags from the list above — do not invent new ones
+- Prefer specific tags over generic (e.g., "Quantization" over "Efficiency" if the paper is specifically about quantization)
+- If the article doesn't fit any tag well, use the closest match`;
+
+    const result = await tagModel.generateContent(prompt);
     const text = result.response.candidates?.[0]?.content?.parts?.[0]?.text;
     if (text) {
-      const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      return JSON.parse(cleanText) as string[];
+      const tags = JSON.parse(text) as string[];
+      // Validate tags against taxonomy
+      return tags.filter(t => TAG_TAXONOMY.includes(t)).slice(0, 4);
     }
   } catch (e) {
     console.error('[ingestion] Error generating tags:', e);
