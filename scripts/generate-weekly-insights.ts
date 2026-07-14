@@ -24,8 +24,6 @@ async function main() {
     return;
   }
   
-  console.log(`Found ${articles.length} articles.`);
-  
   const outputDir = path.join(process.cwd(), 'public', 'insights', 'current-week');
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });

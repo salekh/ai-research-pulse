@@ -40,7 +40,7 @@ async function runInBatches<T, R>(
 // ---------------------------------------------------------------------------
 // RSS feeds
 // ---------------------------------------------------------------------------
-const FEEDS = [
+export const FEEDS = [
   { url: 'https://research.google/blog/rss/', source: 'Google Research' },
   { url: 'https://deepmind.com/blog/feed/basic', source: 'Google DeepMind' },
   { url: 'https://openai.com/news/rss.xml', source: 'OpenAI' },

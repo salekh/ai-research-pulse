@@ -26,14 +26,11 @@ export function SearchHero({ onSearch, onShowFeed }: SearchHeroProps) {
   ];
 
   useEffect(() => {
+    setMounted(true);
     const interval = setInterval(() => {
       setCurrentPlaceholder((prev) => (prev + 1) % placeholders.length);
     }, 3000);
     return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    setMounted(true);
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {

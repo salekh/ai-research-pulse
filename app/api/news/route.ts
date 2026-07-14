@@ -12,7 +12,8 @@ export async function GET(request: Request) {
   const refresh = searchParams.get('refresh') === 'true';
   const timeRange = searchParams.get('timeRange') || '2w';
   const page = parseInt(searchParams.get('page') || '1', 10);
-  const limit = 30;
+  const rawLimit = parseInt(searchParams.get('limit') || '30', 10);
+  const limit = Math.min(Math.max(rawLimit, 1), 100); // clamp between 1 and 100
   const offset = (page - 1) * limit;
 
   try {
