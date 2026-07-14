@@ -282,13 +282,7 @@ export function NewsFeed({ initialQuery = '' }: { initialQuery?: string }) {
         </TabsContent>
 
         <TabsContent value="trends">
-          <div className="bg-white p-6 rounded-2xl border border-gray-200">
-            <div className="mb-6">
-              <h2 className="text-xl font-normal text-gray-900">Research Trends</h2>
-              <p className="text-gray-500">Top topics analyzed from current research feeds.</p>
-            </div>
-            <TrendChart articles={articles} />
-          </div>
+          <TrendChart articles={articles} />
         </TabsContent>
 
         <TabsContent value="insights">
