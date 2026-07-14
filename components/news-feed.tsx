@@ -47,14 +47,19 @@ export function NewsFeed({ initialQuery = '' }: { initialQuery?: string }) {
     'all': 'All Time',
   };
 
+  const REFRESH_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
+
   useEffect(() => {
-    // 1. Load initial data (fast, from DB)
+    // 1. Immediately load cached data from DB
     fetchNews(searchQuery, false, timeRange, 1);
 
-    // 2. Trigger background refresh (slow, scrapes new data)
-    // Only do this if we are not searching (i.e. viewing the feed)
+    // 2. Trigger a background RSS refresh only if we haven't done one recently
     if (!searchQuery) {
-      fetchNews(searchQuery, true, timeRange, 1);
+      const lastIngested = Number(localStorage.getItem('lastIngested') || '0');
+      if (Date.now() - lastIngested > REFRESH_COOLDOWN_MS) {
+        localStorage.setItem('lastIngested', String(Date.now()));
+        fetchNews(searchQuery, true, timeRange, 1);
+      }
     }
   }, []); // Run once on mount
 
@@ -106,34 +111,6 @@ export function NewsFeed({ initialQuery = '' }: { initialQuery?: string }) {
       fetchNews(searchQuery, false, timeRange, 1);
     }
   };
-
-  // ... existing handlers ...
-
-  // ... inside return ...
-  
-  // After article grid:
-  /*
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {loading && page === 1 ? (
-        // ... skeletons ...
-      ) : (
-        filteredArticles.map(...)
-      )}
-    </div>
-    
-    {hasMore && !loading && (
-      <div className="flex justify-center mt-8">
-        <Button variant="outline" onClick={handleLoadMore} className="rounded-full">
-          Load More
-        </Button>
-      </div>
-    )}
-  */
-  
-  // I need to insert the button in the JSX.
-  // I'll replace the return block or part of it.
-  // The current replacement is for the logic part.
-  // I will do a separate replacement for the JSX to be safe.
 
 
   const handleSaveArticle = (article: Article) => {

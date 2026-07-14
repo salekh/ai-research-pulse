@@ -3,9 +3,8 @@ import { getRandomArticle } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    // Calculate date 3 months ago
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
@@ -13,12 +12,13 @@ export async function GET() {
 
     if (article) {
       return NextResponse.redirect(article.link);
-    } else {
-      // Fallback if no recent articles
-      return NextResponse.redirect(new URL('/', 'http://localhost:3000').toString());
     }
+
+    // Derive base URL from the incoming request — works in any environment (local, Cloud Run, etc.)
+    const { origin } = new URL(request.url);
+    return NextResponse.redirect(`${origin}/`);
   } catch (error) {
-    console.error('Error in I\'m Feeling Lucky:', error);
+    console.error("[api/lucky] Error:", error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

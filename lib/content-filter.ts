@@ -65,14 +65,9 @@ export async function filterTechnicalArticles(articles: Article[]): Promise<Arti
         });
       }
     } catch (e) {
-      console.error("Error filtering batch:", e);
-      // In case of error, maybe keep all? or drop all? 
-      // Safer to keep all and log error, or retry. 
-      // For now, we'll log and skip this batch to avoid pollution, or maybe keep them to be safe?
-      // Let's keep them if it fails, to avoid losing data, but log it.
-      // Actually, if we are filtering *existing* DB, we might want to be conservative.
-      // But if we are fetching, maybe we want to be strict.
-      // Let's assume strict for now to clean up.
+      console.error('[content-filter] Error filtering batch — keeping all articles to avoid data loss:', e);
+      // Preserve the whole batch so we don't silently discard articles when the LLM call fails
+      validArticles.push(...batch);
     }
   }
 
