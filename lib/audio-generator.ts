@@ -1,10 +1,13 @@
 import { GoogleGenAI } from "@google/genai";
 import { Article } from './db';
 
-// Initialize Gemini Client
-const ai = new GoogleGenAI({
-  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY
-});
+// ---------------------------------------------------------------------------
+// Initialize Gemini Client via Vertex AI backend (uses ADC — works on Cloud Run)
+// ---------------------------------------------------------------------------
+const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT;
+const location = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
+
+const ai = new GoogleGenAI({ vertexai: true, project, location });
 
 export type InsightType = 'overview' | 'podcast';
 
