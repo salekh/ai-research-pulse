@@ -1,32 +1,28 @@
-import { VertexAI } from '@google-cloud/vertexai';
+import { GoogleGenAI } from '@google/genai';
 import { Article } from './db';
 
 // ---------------------------------------------------------------------------
-// Vertex AI client (ADC — same auth pattern as all other modules)
+// Vertex AI client — @google/genai with Vertex AI backend (supports global)
 // ---------------------------------------------------------------------------
 const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT;
 const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
 
-const vertex = project ? new VertexAI({ project, location }) : null;
+let _ai: GoogleGenAI | null = null;
+function getAI(): GoogleGenAI | null {
+  if (!project) return null;
+  if (!_ai) _ai = new GoogleGenAI({ vertexai: true, project, location });
+  return _ai;
+}
 
-const model = vertex
-  ? vertex.preview.getGenerativeModel({
-      model: 'gemini-3.5-flash',
-      generationConfig: {
-        temperature: 0.1,
-        responseMimeType: 'application/json',
-      },
-    })
-  : null;
-
-if (!vertex) console.warn('[content-filter] Vertex AI not initialised: Missing project ID');
+if (!project) console.warn('[content-filter] Vertex AI not initialised: Missing project ID');
 
 // ---------------------------------------------------------------------------
 // Filter articles to keep only genuine technical AI research
 // ---------------------------------------------------------------------------
 export async function filterTechnicalArticles(articles: Article[]): Promise<Article[]> {
   if (articles.length === 0) return [];
-  if (!model) {
+  const ai = getAI();
+  if (!ai) {
     console.warn('[content-filter] No model available — returning all articles unfiltered');
     return articles;
   }
@@ -72,10 +68,17 @@ Return a JSON object: { "keep_indices": [0, 2, 5, ...] }
 Only include indices of articles that should be KEPT. Indices are 0-based and must be between 0 and ${batch.length - 1}.`;
 
     try {
-      const response = await model.generateContent(prompt);
-      const text = response.response.candidates?.[0]?.content?.parts?.[0]?.text;
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.5-flash',
+        contents: prompt,
+        config: {
+          temperature: 0.1,
+          responseMimeType: 'application/json',
+        },
+      });
+
+      const text = response.text;
       if (!text) {
-        // If model returns nothing, keep the batch to avoid data loss
         validArticles.push(...batch);
         continue;
       }
@@ -90,7 +93,6 @@ Only include indices of articles that should be KEPT. Indices are 0-based and mu
           }
         });
       } else {
-        // Unexpected format — keep all to avoid data loss
         validArticles.push(...batch);
       }
     } catch (e) {

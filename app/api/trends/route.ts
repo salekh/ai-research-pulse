@@ -1,29 +1,26 @@
 import { NextResponse } from 'next/server';
-import { VertexAI } from '@google-cloud/vertexai';
+import { GoogleGenAI } from '@google/genai';
 
 // ---------------------------------------------------------------------------
-// Module-level client
+// Module-level client — uses @google/genai with Vertex AI backend
 // ---------------------------------------------------------------------------
 const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT;
 const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
 
-const vertexModel = project
-  ? new VertexAI({ project, location }).preview.getGenerativeModel({
-      model: 'gemini-3.5-flash',
-      generationConfig: {
-        maxOutputTokens: 8192,
-        temperature: 0.3,
-        topP: 0.95,
-        responseMimeType: 'application/json',
-      },
-    })
-  : null;
+let _ai: GoogleGenAI | null = null;
+function getAI(): GoogleGenAI {
+  if (!_ai) {
+    if (!project) throw new Error('[trends] GOOGLE_CLOUD_PROJECT is not set');
+    _ai = new GoogleGenAI({ vertexai: true, project, location });
+  }
+  return _ai;
+}
 
 // ---------------------------------------------------------------------------
 // POST /api/trends
 // ---------------------------------------------------------------------------
 export async function POST(req: Request) {
-  if (!vertexModel) {
+  if (!project) {
     return NextResponse.json(
       { error: 'GOOGLE_CLOUD_PROJECT environment variable is not set.' },
       { status: 500 },
@@ -95,9 +92,18 @@ Return exactly 5-8 trends, sorted by 'value' descending.
 Articles:
 ${articlesContext}`;
 
-    const result = await vertexModel.generateContent(prompt);
-    const text = result.response.candidates?.[0]?.content?.parts?.[0]?.text;
+    const result = await getAI().models.generateContent({
+      model: 'gemini-3.5-flash',
+      contents: prompt,
+      config: {
+        temperature: 0.3,
+        maxOutputTokens: 8192,
+        topP: 0.95,
+        responseMimeType: 'application/json',
+      },
+    });
 
+    const text = result.text;
     if (!text) throw new Error('No response from Gemini');
 
     const data = JSON.parse(text);

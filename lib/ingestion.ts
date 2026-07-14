@@ -1,7 +1,7 @@
 import Parser from 'rss-parser';
 import { saveArticles, getArticles, Article } from '@/lib/db';
 import { getEmbedding } from '@/lib/vertex';
-import { VertexAI } from '@google-cloud/vertexai';
+import { GoogleGenAI } from '@google/genai';
 
 const parser = new Parser({
   headers: {
@@ -12,24 +12,19 @@ const parser = new Parser({
 });
 
 // ---------------------------------------------------------------------------
-// Vertex AI client for tag generation (uses ADC / env vars)
+// Vertex AI client for tag generation — @google/genai with Vertex AI backend
 // ---------------------------------------------------------------------------
 const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT;
 const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
-const vertex_ai = project ? new VertexAI({ project, location }) : null;
 
-// Module-level model for tag generation — reused across all calls
-const tagModel = vertex_ai
-  ? vertex_ai.preview.getGenerativeModel({
-      model: 'gemini-3.5-flash',
-      generationConfig: {
-        temperature: 0.1,
-        responseMimeType: 'application/json',
-      },
-    })
-  : null;
+let _ai: GoogleGenAI | null = null;
+function getAI(): GoogleGenAI | null {
+  if (!project) return null;
+  if (!_ai) _ai = new GoogleGenAI({ vertexai: true, project, location });
+  return _ai;
+}
 
-if (!vertex_ai) console.warn('[ingestion] Vertex AI not initialised: Missing project ID');
+if (!project) console.warn('[ingestion] Vertex AI not initialised: Missing project ID');
 
 // ---------------------------------------------------------------------------
 // Concurrency helper — processes items in parallel batches of `batchSize`
@@ -235,7 +230,8 @@ const TAG_TAXONOMY = [
 ];
 
 async function generateTags(article: Article): Promise<string[]> {
-  if (!tagModel) return [];
+  const ai = getAI();
+  if (!ai) return [];
   try {
     const prompt = `Classify this AI research article into 2-4 tags from the following taxonomy. Return a JSON array of strings.
 
@@ -250,8 +246,15 @@ Rules:
 - Prefer specific tags over generic (e.g., "Quantization" over "Efficiency" if the paper is specifically about quantization)
 - If the article doesn't fit any tag well, use the closest match`;
 
-    const result = await tagModel.generateContent(prompt);
-    const text = result.response.candidates?.[0]?.content?.parts?.[0]?.text;
+    const result = await ai.models.generateContent({
+      model: 'gemini-3.5-flash',
+      contents: prompt,
+      config: {
+        temperature: 0.1,
+        responseMimeType: 'application/json',
+      },
+    });
+    const text = result.text;
     if (text) {
       const tags = JSON.parse(text) as string[];
       // Validate tags against taxonomy

@@ -1,29 +1,27 @@
 import { NextResponse } from 'next/server';
-import { VertexAI } from '@google-cloud/vertexai';
+import { GoogleGenAI } from '@google/genai';
 import * as cheerio from 'cheerio';
 
 // ---------------------------------------------------------------------------
-// Module-level client
+// Module-level client — uses @google/genai with Vertex AI backend
 // ---------------------------------------------------------------------------
 const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT;
 const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
 
-const vertexModel = project
-  ? new VertexAI({ project, location }).getGenerativeModel({
-      model: 'gemini-3.5-flash',
-      generationConfig: {
-        temperature: 0.2,          // Factual, consistent summaries
-        maxOutputTokens: 1024,
-        responseMimeType: 'application/json',
-      },
-    })
-  : null;
+let _ai: GoogleGenAI | null = null;
+function getAI(): GoogleGenAI {
+  if (!_ai) {
+    if (!project) throw new Error('[summarize] GOOGLE_CLOUD_PROJECT is not set');
+    _ai = new GoogleGenAI({ vertexai: true, project, location });
+  }
+  return _ai;
+}
 
 // ---------------------------------------------------------------------------
 // POST /api/summarize
 // ---------------------------------------------------------------------------
 export async function POST(request: Request) {
-  if (!vertexModel) {
+  if (!project) {
     return NextResponse.json(
       { error: 'GOOGLE_CLOUD_PROJECT environment variable is not set.' },
       { status: 500 },
@@ -72,10 +70,17 @@ Return a JSON object with exactly these keys:
 
 Prioritize the extracted article content if available; fall back to the snippet if not. Be precise and technical — your audience is ML engineers.`;
 
-    const result = await vertexModel.generateContent(prompt);
-    const candidates = result.response.candidates;
-    if (!candidates || candidates.length === 0) throw new Error('No summary generated');
-    const text = candidates[0].content.parts[0].text;
+    const result = await getAI().models.generateContent({
+      model: 'gemini-3.5-flash',
+      contents: prompt,
+      config: {
+        temperature: 0.2,
+        maxOutputTokens: 1024,
+        responseMimeType: 'application/json',
+      },
+    });
+
+    const text = result.text;
     if (!text) throw new Error('Empty response');
 
     const parsed = JSON.parse(text);
