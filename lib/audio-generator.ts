@@ -54,7 +54,7 @@ export async function generateTranscript(articles: Article[], type: InsightType)
 }
 
 export async function synthesizeAudio(transcript: string, type: InsightType): Promise<Buffer> {
-  const ttsModel = "gemini-3.5-flash-preview-tts";
+  const ttsModel = "gemini-2.5-pro-preview-tts";
   
   let speechConfig: any = {};
 
