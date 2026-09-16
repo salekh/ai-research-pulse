@@ -1,50 +1,142 @@
 @import "tailwindcss";
 
+/* ===================================================================
+   Google Cloud AI Tech Group (FDE) — Normative Typography & Palette
+   Static-instanced TTFs only (fvar absent, Type 3 safe per brand.md §2B/§3)
+   Roboto is strictly prohibited.
+   =================================================================== */
+
+@font-face {
+  font-family: 'Google Sans';
+  src: url('/fonts/GoogleSans-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Google Sans';
+  src: url('/fonts/GoogleSans-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Google Sans';
+  src: url('/fonts/GoogleSans-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Google Sans Text';
+  src: url('/fonts/GoogleSansText-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Google Sans Text';
+  src: url('/fonts/GoogleSansText-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Google Sans Text';
+  src: url('/fonts/GoogleSansText-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Google Sans Text';
+  src: url('/fonts/GoogleSansText-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Google Sans Mono';
+  src: url('/fonts/GoogleSansCode-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  /* Google Material 3 inspired palette */
-  --background: #F8F9FA; /* Google Grey 50 */
-  --foreground: #1F1F1F; /* Google Grey 900 */
-  
-  /* Google Brand Colors */
-    --google-blue: #4285F4;
-    --google-red: #EA4335;
-    --google-yellow: #FBBC05;
-    --google-green: #34A853;
-  
-    --primary: var(--google-blue);
+  /* FDE Brand Palette (assets/brand/palette.json verbatim tokens) */
+  --canvas-dark: #202124;
+  --canvas-light: #F8F9FA;
+  --accent-blue: #4471ED;
+  --text-dark-primary: #FFFFFF;
+  --text-dark-secondary: #BABBBC;
+  --text-light-primary: #202124;
+  --text-light-secondary: #5F6368;
+
+  /* Google Brand Quad */
+  --google-blue: #4285F4;
+  --google-red: #EA4335;
+  --google-yellow: #FBBC04;
+  --google-green: #34A853;
+
+  /* Surfaces & UI Tokens */
+  --background: #F8F9FA;
+  --foreground: #202124;
+  --primary: #4471ED;
   --primary-foreground: #FFFFFF;
-  
   --secondary: #E8F0FE;
-    /* Google Blue 50 */
-    --secondary-foreground: #1967D2;
-    /* Google Blue 700 */
-  
+  --secondary-foreground: #1967D2;
   --muted: #F1F3F4;
-    /* Google Grey 100 */
-    --muted-foreground: #5F6368;
-    /* Google Grey 700 */
-  
+  --muted-foreground: #5F6368;
   --card: #FFFFFF;
   --card-foreground: #202124;
-    /* Google Grey 900 */
-  
   --border: #DADCE0;
-    /* Google Grey 300 */
-  
-  /* Font Stack */
-    --font-sans: var(--font-roboto);
---popover: #FFFFFF;
-  --popover-foreground: #1F1F1F;
+  --rule: #DADCE0;
+  --tint: #E8F0FE;
+  --popover: #FFFFFF;
+  --popover-foreground: #202124;
+
+  /* Font stacks */
+  --font-sans: 'Google Sans Text', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Google Sans', 'Google Sans Text', sans-serif;
+  --font-mono: 'Google Sans Mono', monospace;
 }
 
 @theme {
   --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+  --color-primary: var(--primary);
   --color-popover: var(--popover);
-    --color-popover-foreground: var(--popover-foreground);
+  --color-popover-foreground: var(--popover-foreground);
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.015em;
+}
+
+code, pre, .font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Tabular numerals per brand.md §3.3 */
+.tabular-nums, .stat-num, table td.num {
+  font-feature-settings: "tnum" 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* FDE Rainbow Divider Bar */
+.fde-gradient-divider {
+  background: linear-gradient(90deg, #EC4032 0%, #FF9302 25%, #FABF03 50%, #42AB42 75%, #0764FF 100%);
 }

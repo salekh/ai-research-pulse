@@ -1,37 +1,41 @@
-import { GoogleGenAI } from '@google/genai';
 import { Article } from './db';
+import { generateContentWithFallback } from './vertex';
 
-// ---------------------------------------------------------------------------
-// Vertex AI client — @google/genai with Vertex AI backend (supports global)
-// ---------------------------------------------------------------------------
-const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT;
-const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
+const EXCLUDED_URL_PATTERNS = ['/team/', '/policies/', '/global-affairs/', '/careers', '/press/'];
+const EXCLUDED_TITLES = new Set([
+  'Economic Research',
+  'Interpretability',
+  'Societal Impacts',
+  'Alignment',
+  'Teacher Access Terms',
+]);
 
-let _ai: GoogleGenAI | null = null;
-function getAI(): GoogleGenAI | null {
-  if (!project) return null;
-  if (!_ai) _ai = new GoogleGenAI({ vertexai: true, project, location });
-  return _ai;
-}
-
-if (!project) console.warn('[content-filter] Vertex AI not initialised: Missing project ID');
-
-// ---------------------------------------------------------------------------
-// Filter articles to keep only genuine technical AI research
-// ---------------------------------------------------------------------------
+/**
+ * Filter articles to keep only genuine technical AI research.
+ * First applies fast heuristic URL/title pruning, then uses gemini-3.8-flash
+ * batch classification with deterministic fallback.
+ */
 export async function filterTechnicalArticles(articles: Article[]): Promise<Article[]> {
   if (articles.length === 0) return [];
-  const ai = getAI();
-  if (!ai) {
-    console.warn('[content-filter] No model available — returning all articles unfiltered');
-    return articles;
-  }
+
+  // Step 1: Fast deterministic rule filter (strips navigation/policy/PR links immediately)
+  const preFiltered = articles.filter((a) => {
+    if (!a.title || !a.link) return false;
+    if (EXCLUDED_TITLES.has(a.title.trim())) return false;
+    const linkLower = a.link.toLowerCase();
+    for (const pattern of EXCLUDED_URL_PATTERNS) {
+      if (linkLower.includes(pattern)) return false;
+    }
+    return true;
+  });
+
+  if (preFiltered.length === 0) return [];
 
   const batchSize = 20;
   const validArticles: Article[] = [];
 
-  for (let i = 0; i < articles.length; i += batchSize) {
-    const batch = articles.slice(i, i + batchSize);
+  for (let i = 0; i < preFiltered.length; i += batchSize) {
+    const batch = preFiltered.slice(i, i + batchSize);
 
     const prompt = `You are the editorial filter for a technical AI research newsletter. Your audience is ML engineers and researchers — they want papers, methods, and technical insights, not business news.
 
@@ -49,39 +53,29 @@ export async function filterTechnicalArticles(articles: Article[]): Promise<Arti
 - Executive changes (new CEO, board appointments, departures)
 - Pure product announcements without technical details ("We launched X")
 - Regulatory / policy news (unless deeply technical, e.g., a technical compliance framework)
-- Thought leadership, opinion pieces, or "AI will change everything" fluff
 - Event announcements, hiring posts, or company culture pieces
 
-**EDGE CASES — KEEP these:**
-- A product launch blog post that includes model architecture details or benchmark numbers → KEEP
-- An AI regulation paper that proposes a technical auditing framework → KEEP
-- A safety paper analyzing failure modes with concrete examples → KEEP
-
-**EDGE CASES — EXCLUDE these:**
-- "Our new AI product is now available" with no technical details → EXCLUDE
-- "The state of AI in 2025" opinion roundup → EXCLUDE
-
 Input Articles:
-${batch.map((a, idx) => `[${idx}] Title: ${a.title}\nSnippet: ${a.snippet?.substring(0, 200) || '(no snippet)'}`).join('\n\n')}
+${batch
+  .map(
+    (a, idx) =>
+      `[${idx}] Title: ${a.title}\nSnippet: ${a.snippet?.substring(0, 200) || '(no snippet)'}`
+  )
+  .join('\n\n')}
 
 Return a JSON object: { "keep_indices": [0, 2, 5, ...] }
-Only include indices of articles that should be KEPT. Indices are 0-based and must be between 0 and ${batch.length - 1}.`;
+Only include indices of articles that should be KEPT. Indices are 0-based and must be between 0 and ${
+      batch.length - 1
+    }.`;
 
     try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
+      const { text } = await generateContentWithFallback({
         contents: prompt,
         config: {
           temperature: 0.1,
           responseMimeType: 'application/json',
         },
       });
-
-      const text = response.text;
-      if (!text) {
-        validArticles.push(...batch);
-        continue;
-      }
 
       const result = JSON.parse(text);
       const keepIndices = result.keep_indices;
@@ -96,8 +90,14 @@ Only include indices of articles that should be KEPT. Indices are 0-based and mu
         validArticles.push(...batch);
       }
     } catch (e) {
-      console.error('[content-filter] Error filtering batch — keeping all articles to avoid data loss:', e);
-      validArticles.push(...batch);
+      // Deterministic heuristic fallback if Vertex AI is offline or requires reauth
+      for (const article of batch) {
+        const text = `${article.title} ${article.snippet}`.toLowerCase();
+        const isFluff = /\b(hiring|earnings|stock price|board of directors|summit|webinar)\b/.test(
+          text
+        );
+        if (!isFluff) validArticles.push(article);
+      }
     }
   }
 

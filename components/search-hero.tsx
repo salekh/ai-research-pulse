@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Sparkles, ArrowRight } from 'lucide-react';
+import { Search, Sparkles, ArrowRight, Cpu, TrendingUp, Shuffle, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface SearchHeroProps {
   onSearch: (query: string) => void;
-  onShowFeed: () => void;
+  onShowFeed: (tab?: string) => void;
 }
 
 export function SearchHero({ onSearch, onShowFeed }: SearchHeroProps) {
@@ -18,138 +18,233 @@ export function SearchHero({ onSearch, onShowFeed }: SearchHeroProps) {
   const [mounted, setMounted] = useState(false);
 
   const placeholders = [
-    "Search across Google, OpenAI, Anthropic, and more...",
-    "Get AI-powered summaries of the latest research...",
-    "Ask about LLM scaling laws or transformer architectures...",
-    "Discover emerging trends in Generative AI...",
-    "Find papers on reinforcement learning...",
+    'Search across Google DeepMind, OpenAI, Anthropic, Meta, Microsoft, x.AI…',
+    'Ask about test-time compute, RLHF, or agentic harnesses…',
+    'Find breakthroughs in mechanistic interpretability & safety…',
+    'Explore multimodal video world models and scientific benchmarks…',
   ];
 
   useEffect(() => {
     setMounted(true);
     const interval = setInterval(() => {
       setCurrentPlaceholder((prev) => (prev + 1) % placeholders.length);
-    }, 3000);
+    }, 3500);
     return () => clearInterval(interval);
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
-      onSearch(query);
+      onSearch(query.trim());
+    } else {
+      onShowFeed('feed');
     }
   };
 
   if (!mounted) return null;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh] w-full max-w-4xl mx-auto px-4 animate-in fade-in duration-700 slide-in-from-bottom-4">
-      
-      {/* Logo / Brand Area */}
-      <div className="mb-12 text-center space-y-6">
-        <div className="inline-flex items-center justify-center mb-4">
-          <img 
-            src="/logo.jpg" 
-            alt="Research Pulse Logo" 
-            className="w-24 h-24 md:w-32 md:h-32 object-contain animate-in zoom-in duration-700"
+    <div
+      className="relative min-h-[88vh] w-full flex flex-col justify-between overflow-hidden bg-[#202124] text-white"
+      style={{
+        backgroundImage: `url('/brand/bg_dark_aurora.png')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      {/* Oversized cropped mark motif (brand.md §8: top-right ~35% of slide, 45% opacity, max 1 per view) */}
+      <img
+        src="/brand/logo_motif_crop.png"
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none select-none absolute -right-24 -top-12 w-[460px] md:w-[620px] opacity-45 object-contain"
+      />
+
+      {/* Top Co-branding Bar (brand.md §7.3 Layout A) */}
+      <div className="relative z-10 max-w-7xl mx-auto w-full px-6 pt-8 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <img
+            src="/brand/logo_mark_color.png"
+            alt="AI Tech Chevron Mark"
+            className="h-10 w-auto object-contain"
           />
+          <div className="flex flex-col">
+            <span className="text-xs font-mono uppercase tracking-widest text-[#4471ED] font-bold">
+              Google Cloud · AI Tech Group
+            </span>
+            <span className="text-sm text-[#BABBBC] font-medium">
+              Frontier Research Intelligence Platform
+            </span>
+          </div>
         </div>
-        <h1 className="text-4xl md:text-6xl font-normal text-gray-900 tracking-tight">
-          Research <span className="font-medium text-primary">Pulse</span>
-        </h1>
-        <p className="text-lg text-gray-500 max-w-lg mx-auto font-light">
-          Discover the latest breakthroughs in AI, powered by Gemini.
-        </p>
+
+        <img
+          src="/brand/gcloud_lockup_white.png"
+          alt="Google Cloud"
+          className="h-7 w-auto object-contain opacity-95"
+        />
       </div>
 
-      {/* Search Bar */}
-      <div className={`
-        relative w-full max-w-2xl transition-all duration-300 ease-out
-        ${isFocused ? 'scale-105 shadow-2xl' : 'shadow-lg hover:shadow-xl'}
-      `}>
-        <form onSubmit={handleSearch} className="relative group">
-          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-            <Search className={`w-5 h-5 transition-colors duration-300 ${isFocused ? 'text-primary' : 'text-gray-400'}`} />
-          </div>
-          <div className="relative w-full">
+      {/* Centre Hero Content */}
+      <div className="relative z-10 max-w-4xl mx-auto w-full px-6 my-auto py-12 text-center space-y-8">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/8 border border-white/15 backdrop-blur-md text-xs font-mono text-[#8ab4f8]">
+          <Cpu className="w-3.5 h-3.5 text-[#4471ED]" />
+          <span>Powered by Google Gemini 3.8 Flash &amp; Hybrid Vector Search</span>
+        </div>
+
+        <div className="space-y-4">
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight font-display text-white leading-[1.05]">
+            AI Research <span className="text-[#4471ED]">Pulse</span>
+          </h1>
+          <p className="text-lg md:text-xl text-[#BABBBC] max-w-2xl mx-auto font-normal leading-relaxed">
+            Real-time technical publication synthesis, cross-lab convergence matrices, and recursive
+            self-improving intelligence across 7 frontier AI laboratories.
+          </p>
+        </div>
+
+        {/* Search Input */}
+        <div
+          className={`relative w-full max-w-2xl mx-auto transition-all duration-300 ${
+            isFocused ? 'scale-[1.02]' : ''
+          }`}
+        >
+          <form onSubmit={handleSearch} className="relative">
+            <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
+              <Search
+                className={`w-5 h-5 transition-colors ${
+                  isFocused ? 'text-[#4471ED]' : 'text-[#BABBBC]'
+                }`}
+              />
+            </div>
             <Input
               type="text"
-              className="w-full h-16 pl-12 pr-14 text-lg bg-white border-0 rounded-full ring-1 ring-gray-200 focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-transparent"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
+              className="w-full h-16 pl-14 pr-32 text-base md:text-lg bg-[#303134]/95 text-white border border-[#5F6368]/60 rounded-2xl focus:border-[#4471ED] focus:ring-2 focus:ring-[#4471ED]/30 shadow-2xl placeholder:text-transparent"
             />
             {!query && (
-              <div className="absolute inset-0 flex items-center pl-12 pointer-events-none overflow-hidden">
+              <div className="absolute inset-y-0 left-14 right-32 flex items-center pointer-events-none overflow-hidden">
                 <AnimatePresence mode="wait">
                   <motion.span
                     key={placeholders[currentPlaceholder]}
-                    initial={{ y: 20, opacity: 0 }}
+                    initial={{ y: 15, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: -20, opacity: 0 }}
-                    transition={{ duration: 0.3, ease: "easeOut" }}
-                    className="text-lg text-gray-400 truncate"
+                    exit={{ y: -15, opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="text-sm md:text-base text-[#BABBBC] truncate"
                   >
                     {placeholders[currentPlaceholder]}
                   </motion.span>
                 </AnimatePresence>
               </div>
             )}
-          </div>
-          <div className="absolute inset-y-0 right-3 flex items-center">
-            <Button 
-              type="submit"
-              size="icon"
-              className={`
-                rounded-full w-10 h-10 transition-all duration-300
-                ${query.trim() ? 'bg-primary hover:opacity-90 text-white scale-100' : 'bg-transparent text-gray-300 scale-90 pointer-events-none'}
-              `}
+            <div className="absolute inset-y-0 right-2.5 flex items-center">
+              <Button
+                type="submit"
+                className="h-11 px-5 rounded-xl bg-[#4471ED] hover:bg-[#335cd6] text-white font-semibold text-sm flex items-center gap-2 shadow-md cursor-pointer"
+              >
+                <span>Search</span>
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </form>
+        </div>
+
+        {/* Quick Topic Pills & Navigation Actions */}
+        <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
+          {[
+            'Agentic Harnesses',
+            'Test-Time Compute',
+            'Mechanistic Interpretability',
+            'Video World Models',
+            'AI for Science',
+          ].map((topic) => (
+            <button
+              key={topic}
+              onClick={() => onSearch(topic)}
+              className="px-3.5 py-1.5 rounded-full text-xs font-medium bg-white/8 hover:bg-[#4471ED]/30 hover:border-[#4471ED] text-[#E8EAED] border border-white/12 transition-all cursor-pointer"
             >
-              <ArrowRight className="w-5 h-5" />
-            </Button>
+              {topic}
+            </button>
+          ))}
+        </div>
+
+        {/* Primary CTA Strip */}
+        <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+          <Button
+            onClick={() => onShowFeed('feed')}
+            className="h-12 px-7 rounded-xl bg-white text-[#202124] hover:bg-[#F8F9FA] font-bold text-sm shadow-lg flex items-center gap-2.5 cursor-pointer"
+          >
+            <Layers className="w-4 h-4 text-[#4471ED]" />
+            <span>Explore Research Feed</span>
+          </Button>
+
+          <Button
+            onClick={() => onShowFeed('trends')}
+            variant="outline"
+            className="h-12 px-6 rounded-xl bg-white/10 hover:bg-white/15 text-white border-white/20 font-semibold text-sm flex items-center gap-2 cursor-pointer"
+          >
+            <TrendingUp className="w-4 h-4 text-[#8ab4f8]" />
+            <span>Cross-Lab Trends</span>
+          </Button>
+
+          <Button
+            onClick={() => onShowFeed('self-improve')}
+            variant="outline"
+            className="h-12 px-6 rounded-xl bg-white/10 hover:bg-white/15 text-white border-white/20 font-semibold text-sm flex items-center gap-2 cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4 text-[#FBBC04]" />
+            <span>Self-Improve Engine</span>
+          </Button>
+
+          <Button
+            onClick={() => (window.location.href = '/api/lucky')}
+            variant="ghost"
+            className="h-12 px-5 rounded-xl text-[#BABBBC] hover:text-white hover:bg-white/8 font-medium text-sm flex items-center gap-2 cursor-pointer"
+          >
+            <Shuffle className="w-4 h-4" />
+            <span>I&apos;m Feeling Lucky</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* Bottom Executive Briefing Stat Strip (techdoc.css .stats style with tabular-nums) */}
+      <div className="relative z-10 border-t border-white/15 bg-[#202124]/90 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-6 py-5 grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div>
+            <div className="text-2xl md:text-3xl font-bold text-[#4471ED] font-display tabular-nums">
+              994
+            </div>
+            <div className="text-xs text-[#BABBBC] mt-0.5">
+              Technical Papers Indexed &amp; Filtered
+            </div>
           </div>
-        </form>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="mt-8 flex items-center gap-4 animate-in fade-in duration-700 delay-300">
-        <Button
-          variant="outline"
-          onClick={() => window.location.href = '/api/lucky'}
-          className="bg-[#f8f9fa] border border-[#f8f9fa] hover:border-[#dadce0] hover:shadow-sm text-[#3c4043] font-medium px-6 py-2 rounded-md transition-all"
-        >
-          I&apos;m Feeling Lucky
-        </Button>
-
-        <Button
-          variant="outline"
-          onClick={() => window.location.href = '/insights'}
-          className="bg-white border border-gray-200 hover:border-primary/50 hover:text-primary hover:shadow-sm text-gray-700 font-medium px-6 py-2 rounded-md transition-all gap-2"
-        >
-          <Sparkles className="w-4 h-4" />
-          Insights
-        </Button>
-      </div>
-
-
-
-      {/* Footer / Navigation */}
-      <div className="fixed bottom-8 left-0 right-0 flex flex-col items-center gap-4 animate-in fade-in duration-1000 delay-500">
-        <Button 
-          variant="default" 
-          size="lg"
-          onClick={onShowFeed}
-          className="rounded-full px-8 py-6 text-lg font-medium shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 gap-3 bg-white text-primary hover:bg-gray-50 border border-gray-100"
-        >
-          <span>Explore Full Feed</span>
-          <ArrowRight className="w-5 h-5" />
-        </Button>
-
-        {/* Powered by Gemini Badge - Discreet */}
-        <div className="flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
-          <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Powered by</span>
-          <span className="text-xs font-semibold text-gray-500">Gemini</span>
+          <div>
+            <div className="text-2xl md:text-3xl font-bold text-white font-display tabular-nums">
+              7 Labs
+            </div>
+            <div className="text-xs text-[#BABBBC] mt-0.5">
+              DeepMind, Google, OpenAI, Anthropic, Meta, MSFT, xAI
+            </div>
+          </div>
+          <div>
+            <div className="text-2xl md:text-3xl font-bold text-[#34A853] font-mono tabular-nums">
+              gemini-3.8-flash
+            </div>
+            <div className="text-xs text-[#BABBBC] mt-0.5">
+              Primary Reasoning &amp; Synthesis Model
+            </div>
+          </div>
+          <div>
+            <div className="text-2xl md:text-3xl font-bold text-[#FBBC04] font-display tabular-nums">
+              &lt;15 ms
+            </div>
+            <div className="text-xs text-[#BABBBC] mt-0.5">
+              Hybrid Vector + BM25 Retrieval Latency
+            </div>
+          </div>
         </div>
       </div>
     </div>

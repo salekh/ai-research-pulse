@@ -1,0 +1,31 @@
+{
+  "canvas": {
+    "dark": "#202124",
+    "light": "#F8F9FA",
+    "sample_notes": "Dark = modal dark pixel of page 15 (matches Google Grey-900 #202124). Light = modal off-white pixel of page 04 (matches Google Grey-50 #F8F9FA). Gradient stops = five per-hue extrema sampled across page 02 (the full-bleed divider page)."
+  },
+  "accent": {
+    "blue": "#4471ED"
+  },
+  "text_on_dark": {
+    "primary": "#FFFFFF",
+    "secondary": "#BABBBC"
+  },
+  "text_on_light": {
+    "primary": "#000000",
+    "secondary": "#5F6368"
+  },
+  "gradient_stops": [
+    "#EC4032",
+    "#FF9302",
+    "#FABF03",
+    "#42AB42",
+    "#0764FF"
+  ],
+  "google_brand": {
+    "blue": "#4285F4",
+    "red": "#EA4335",
+    "yellow": "#FBBC04",
+    "green": "#34A853"
+  }
+}

@@ -1,46 +1,66 @@
 import Parser from 'rss-parser';
 import { saveArticles, getArticles, Article } from '@/lib/db';
-import { getEmbedding } from '@/lib/vertex';
-import { GoogleGenAI } from '@google/genai';
+import { getEmbeddingsBatch, generateContentWithFallback } from '@/lib/vertex';
+import { filterTechnicalArticles } from '@/lib/content-filter';
 
 const parser = new Parser({
   headers: {
     'User-Agent':
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
     Accept: 'application/rss+xml, application/xml, text/xml; q=0.1',
   },
 });
 
 // ---------------------------------------------------------------------------
-// Vertex AI client for tag generation — @google/genai with Vertex AI backend
+// Server-side ingestion mutex & cooldown to prevent client DDoS
 // ---------------------------------------------------------------------------
-const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT;
-const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
-
-let _ai: GoogleGenAI | null = null;
-function getAI(): GoogleGenAI | null {
-  if (!project) return null;
-  if (!_ai) _ai = new GoogleGenAI({ vertexai: true, project, location });
-  return _ai;
-}
-
-if (!project) console.warn('[ingestion] Vertex AI not initialised: Missing project ID');
+let isIngesting = false;
+let lastIngestionTime = 0;
+const INGESTION_COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes server-side cooldown
 
 // ---------------------------------------------------------------------------
-// Concurrency helper — processes items in parallel batches of `batchSize`
+// Canonical tag taxonomy
 // ---------------------------------------------------------------------------
-async function runInBatches<T, R>(
-  items: T[],
-  batchSize: number,
-  fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const results: R[] = [];
-  for (let i = 0; i < items.length; i += batchSize) {
-    const batch = items.slice(i, i + batchSize);
-    const batchResults = await Promise.all(batch.map(fn));
-    results.push(...batchResults);
+export const TAG_TAXONOMY = [
+  'LLM', 'Vision', 'Multimodal', 'Audio', 'Video',
+  'RL', 'Robotics', 'Agents',
+  'Safety', 'Alignment', 'Interpretability',
+  'Efficiency', 'Quantization', 'Distillation',
+  'Training', 'Fine-tuning', 'RLHF',
+  'Inference', 'Serving', 'Systems',
+  'Data', 'Synthetic Data', 'Evaluation',
+  'RAG', 'Retrieval', 'Search',
+  'Code', 'Math', 'Reasoning',
+  'Science', 'Healthcare', 'Climate',
+  'Diffusion', 'Generation', 'World Models',
+] as const;
+
+const DETERMINISTIC_TAXONOMY_RULES: Array<{ tag: string; regex: RegExp }> = [
+  { tag: 'LLM', regex: /\b(llm|language model|gpt|claude|gemini|transformer|llama|token)\b/i },
+  { tag: 'Reasoning', regex: /\b(reason|chain of thought|math|o1|o3|thinking|step-by-step|logic)\b/i },
+  { tag: 'Multimodal', regex: /\b(multimodal|vision-language|audio|speech|voice|image-to-text)\b/i },
+  { tag: 'Video', regex: /\b(sora|video|veo|cinematic|motion)\b/i },
+  { tag: 'Vision', regex: /\b(vision|image|diffusion|pixel|segmentation|detection|3d)\b/i },
+  { tag: 'Agents', regex: /\b(agent|agentic|tool use|computer use|browser|workflow|autonomous)\b/i },
+  { tag: 'RL', regex: /\b(reinforcement learning|rlhf|reward|policy gradient|ppo|dpo)\b/i },
+  { tag: 'Safety', regex: /\b(safety|alignment|jailbreak|red team|constitutional|guardrail|hallucination|robustness)\b/i },
+  { tag: 'Interpretability', regex: /\b(interpretability|mechanistic|feature|circuit|attention head|sparse autoencoder)\b/i },
+  { tag: 'Efficiency', regex: /\b(efficiency|quantization|distillation|pruning|flashattention|inference|latency|throughput)\b/i },
+  { tag: 'Code', regex: /\b(code|coding|programming|software engineer|swe-bench|copilot|compiler)\b/i },
+  { tag: 'Science', regex: /\b(protein|alphafold|genom|chemistry|molecule|physics|weather|climate|medical|healthcare)\b/i },
+  { tag: 'Robotics', regex: /\b(robot|embodied|manipulation|locomotion|humanoid)\b/i },
+  { tag: 'Evaluation', regex: /\b(benchmark|evaluation|eval|leaderboard|indqa|mmlu)\b/i },
+  { tag: 'Training', regex: /\b(pre-training|fine-tuning|post-training|dataset|synthetic data|scaling law)\b/i },
+];
+
+export function extractTagsDeterministic(title: string, snippet: string): string[] {
+  const text = `${title} ${snippet}`;
+  const matched: string[] = [];
+  for (const rule of DETERMINISTIC_TAXONOMY_RULES) {
+    if (rule.regex.test(text)) matched.push(rule.tag);
+    if (matched.length >= 3) break;
   }
-  return results;
+  return matched.length > 0 ? matched : ['LLM', 'Research'];
 }
 
 // ---------------------------------------------------------------------------
@@ -73,28 +93,50 @@ export const FEEDS = [
 ] as const;
 
 // ---------------------------------------------------------------------------
-// Main ingestion pipeline
+// Main ingestion pipeline (with mutex & technical filtering)
 // ---------------------------------------------------------------------------
-export async function ingestAll(_refresh = false): Promise<Article[]> {
-  console.log('[ingestion] Starting...');
+export async function ingestAll(force = false): Promise<Article[]> {
+  const now = Date.now();
+  if (isIngesting) {
+    console.log('[ingestion] Ingestion already in progress — skipping concurrent run.');
+    return getArticles(50);
+  }
+  if (!force && now - lastIngestionTime < INGESTION_COOLDOWN_MS) {
+    console.log('[ingestion] Within 15-min cooldown — skipping duplicate RSS refresh.');
+    return getArticles(50);
+  }
 
-  // 1. Fetch all RSS feeds in parallel
-  const rssResults = await Promise.all(
-    FEEDS.map((f) => fetchRSS(f.url, f.source as Article['source'])),
-  );
-  const allArticles = rssResults.flat();
+  isIngesting = true;
+  lastIngestionTime = now;
 
-  // 2. Deduplicate by normalised link
-  const uniqueArticles = deduplicateArticles(allArticles);
-  console.log(`[ingestion] ${uniqueArticles.length} unique articles fetched.`);
+  try {
+    console.log('[ingestion] Starting RSS aggregation...');
 
-  // 3. Bulk-save raw articles (tags/embeddings filled in next step)
-  await saveArticles(uniqueArticles);
+    // 1. Fetch all RSS feeds in parallel
+    const rssResults = await Promise.all(
+      FEEDS.map((f) => fetchRSS(f.url, f.source as Article['source']))
+    );
+    const allArticles = rssResults.flat();
 
-  // 4. Generate missing tags + embeddings in parallel batches of 5
-  await processMissingMetadata();
+    // 2. Deduplicate by normalised link
+    const uniqueArticles = deduplicateArticles(allArticles);
 
-  return uniqueArticles;
+    // 3. Filter out non-technical / PR / navigation articles BEFORE database storage
+    const technicalArticles = await filterTechnicalArticles(uniqueArticles);
+    console.log(
+      `[ingestion] Fetched ${uniqueArticles.length} unique -> kept ${technicalArticles.length} technical articles.`
+    );
+
+    // 4. Bulk-save raw articles
+    await saveArticles(technicalArticles);
+
+    // 5. Enrich missing tags & embeddings in efficient batches
+    await processMissingMetadata();
+
+    return technicalArticles;
+  } finally {
+    isIngesting = false;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -105,9 +147,10 @@ async function fetchRSS(url: string, source: Article['source']): Promise<Article
     const response = await fetch(url, {
       headers: {
         'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
         Accept: 'application/rss+xml, application/xml, text/xml; q=0.1',
       },
+      signal: AbortSignal.timeout(10000),
     });
 
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -118,15 +161,19 @@ async function fetchRSS(url: string, source: Article['source']): Promise<Article
     return feed.items
       .map((item) => {
         let title = item.title || 'No title';
-        let link = item.link || '';
+        const link = item.link || '';
+        if (!link) return null;
 
         if (source === 'Anthropic') {
           if (link.includes('/team/')) return null;
-          // Remove date prefix e.g. "Dec 4, 2025Societal Impacts..."
           title = title.replace(/^[A-Z][a-z]{2}\s+\d{1,2},\s+\d{4}/, '').trim();
-          // Fix mashed CamelCase
           title = title.replace(/([a-z])([A-Z])/g, '$1 $2');
         }
+
+        const snippet = (item.contentSnippet || item.content || '').replace(/<[^>]*>?/gm, '').trim();
+        const rawCategories = item.categories
+          ? item.categories.filter((c) => typeof c === 'string' && c.length < 25).slice(0, 3)
+          : [];
 
         const article: Article = {
           title,
@@ -135,8 +182,11 @@ async function fetchRSS(url: string, source: Article['source']): Promise<Article
             item.isoDate ||
             (item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString()),
           source,
-          snippet: item.contentSnippet || item.content || '',
-          tags: item.categories ? item.categories.slice(0, 4) : [],
+          snippet,
+          tags:
+            rawCategories.length > 0
+              ? rawCategories
+              : extractTagsDeterministic(title, snippet),
         };
         return article;
       })
@@ -147,9 +197,6 @@ async function fetchRSS(url: string, source: Article['source']): Promise<Article
   }
 }
 
-// ---------------------------------------------------------------------------
-// Deduplication — normalise links (strip query params + trailing slashes)
-// ---------------------------------------------------------------------------
 function deduplicateArticles(articles: Article[]): Article[] {
   const seen = new Set<string>();
   return articles.filter((a) => {
@@ -161,107 +208,91 @@ function deduplicateArticles(articles: Article[]): Article[] {
 }
 
 // ---------------------------------------------------------------------------
-// Post-processing — generate tags + embeddings for articles that are missing them
-// Runs 5 articles concurrently to stay within rate limits.
+// Batch Post-processing — generates tags & embeddings in batches (15x fewer LLM calls)
 // ---------------------------------------------------------------------------
-async function processMissingMetadata(): Promise<void> {
-  console.log('[ingestion] Processing missing metadata (tags/embeddings)...');
+export async function processMissingMetadata(maxArticles = 60): Promise<number> {
+  const articles = await getArticles(maxArticles, undefined, 0, undefined, true);
+  const needsTags = articles.filter((a) => !a.tags || a.tags.length === 0);
+  const needsEmbeddings = articles.filter((a) => !a.embedding);
 
-  const articles = await getArticles(1000);
-  const needsWork = articles.filter(
-    (a) => !a.tags || a.tags.length === 0 || !a.embedding,
-  );
-
-  if (needsWork.length === 0) {
-    console.log('[ingestion] All articles have metadata — nothing to do.');
-    return;
+  if (needsTags.length === 0 && needsEmbeddings.length === 0) {
+    return 0;
   }
 
-  console.log(`[ingestion] ${needsWork.length} articles need metadata.`);
-
-  const updated: Article[] = [];
-
-  await runInBatches(needsWork, 5, async (article) => {
-    let changed = false;
-
-    // Generate tags if missing
-    if (!article.tags || article.tags.length === 0) {
-      const tags = await generateTags(article);
-      if (tags.length > 0) {
-        article.tags = tags;
-        changed = true;
-      }
+  // 1. Batch Tag Generation (up to 15 articles per Gemini call)
+  if (needsTags.length > 0) {
+    const TAG_BATCH = 15;
+    for (let i = 0; i < needsTags.length; i += TAG_BATCH) {
+      const chunk = needsTags.slice(i, i + TAG_BATCH);
+      const batchTags = await generateTagsBatch(chunk);
+      chunk.forEach((art, idx) => {
+        art.tags =
+          batchTags[idx] && batchTags[idx].length > 0
+            ? batchTags[idx]
+            : extractTagsDeterministic(art.title, art.snippet);
+      });
     }
+  }
 
-    // Generate embedding if missing
-    if (!article.embedding) {
-      const embedding = await getEmbedding(`${article.title} ${article.snippet}`);
-      if (embedding) {
-        article.embedding = embedding;
-        changed = true;
+  // 2. Batch Embedding Generation (up to 100 per Vertex AI call)
+  if (needsEmbeddings.length > 0) {
+    const texts = needsEmbeddings.map((a) => `${a.title} ${a.snippet}`);
+    const embeddings = await getEmbeddingsBatch(texts);
+    needsEmbeddings.forEach((art, idx) => {
+      if (embeddings[idx]) {
+        art.embedding = embeddings[idx]!;
       }
-    }
+    });
+  }
 
-    if (changed) updated.push(article);
-  });
-
-  // Single bulk upsert for all updated articles
+  // Single bulk upsert
+  const updated = Array.from(new Set([...needsTags, ...needsEmbeddings]));
   if (updated.length > 0) {
     await saveArticles(updated);
-    console.log(`[ingestion] Saved metadata for ${updated.length} articles.`);
   }
+  return updated.length;
 }
 
-// ---------------------------------------------------------------------------
-// Canonical tag taxonomy — model must choose from this list
-// ---------------------------------------------------------------------------
-const TAG_TAXONOMY = [
-  'LLM', 'Vision', 'Multimodal', 'Audio', 'Video',
-  'RL', 'Robotics', 'Agents',
-  'Safety', 'Alignment', 'Interpretability',
-  'Efficiency', 'Quantization', 'Distillation',
-  'Training', 'Fine-tuning', 'RLHF',
-  'Inference', 'Serving', 'Systems',
-  'Data', 'Synthetic Data', 'Evaluation',
-  'RAG', 'Retrieval', 'Search',
-  'Code', 'Math', 'Reasoning',
-  'Science', 'Healthcare', 'Climate',
-  'Diffusion', 'Generation', 'World Models',
-];
-
-async function generateTags(article: Article): Promise<string[]> {
-  const ai = getAI();
-  if (!ai) return [];
+async function generateTagsBatch(articles: Article[]): Promise<string[][]> {
+  if (articles.length === 0) return [];
   try {
-    const prompt = `Classify this AI research article into 2-4 tags from the following taxonomy. Return a JSON array of strings.
-
+    const prompt = `Classify each of the following ${articles.length} AI research articles into 2-4 tags from the canonical taxonomy.
 Allowed tags: ${TAG_TAXONOMY.join(', ')}
 
-Title: ${article.title}
-Snippet: ${article.snippet?.substring(0, 300) || '(no snippet)'}
+Articles:
+${articles
+  .map(
+    (a, idx) =>
+      `[${idx}] Title: ${a.title}\nSnippet: ${a.snippet?.substring(0, 200) || '(no snippet)'}`
+  )
+  .join('\n\n')}
 
-Rules:
-- Choose 2-4 tags that best describe the article's technical content
-- Use ONLY tags from the list above — do not invent new ones
-- Prefer specific tags over generic (e.g., "Quantization" over "Efficiency" if the paper is specifically about quantization)
-- If the article doesn't fit any tag well, use the closest match`;
+Return a JSON object mapping each index to an array of 2-4 allowed tags:
+{
+  "results": [
+    ["LLM", "Reasoning"],
+    ["Vision", "Diffusion"]
+  ]
+}`;
 
-    const result = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+    const { text } = await generateContentWithFallback({
       contents: prompt,
       config: {
         temperature: 0.1,
         responseMimeType: 'application/json',
       },
     });
-    const text = result.text;
-    if (text) {
-      const tags = JSON.parse(text) as string[];
-      // Validate tags against taxonomy
-      return tags.filter(t => TAG_TAXONOMY.includes(t)).slice(0, 4);
+
+    const parsed = JSON.parse(text);
+    if (Array.isArray(parsed.results)) {
+      return parsed.results.map((tags: any[]) =>
+        Array.isArray(tags)
+          ? tags.filter((t) => TAG_TAXONOMY.includes(t as any)).slice(0, 4)
+          : []
+      );
     }
   } catch (e) {
-    console.error('[ingestion] Error generating tags:', e);
+    console.warn('[ingestion] Batch tag generation fallback to deterministic rules.');
   }
-  return [];
+  return articles.map((a) => extractTagsDeterministic(a.title, a.snippet));
 }

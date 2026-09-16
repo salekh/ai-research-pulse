@@ -2,17 +2,10 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Research Pulse",
-  description: "Aggregator for top AI research news",
+  title: "Research Pulse | Google Cloud AI Tech Group",
+  description:
+    "Frontier AI research aggregator, cross-lab trend synthesizer, and recursive self-improvement engine powered by Gemini 3.8 Flash.",
 };
-
-import { Roboto } from "next/font/google";
-
-const roboto = Roboto({
-  weight: ['100', '300', '400', '500', '700', '900'],
-  subsets: ["latin"],
-  variable: "--font-roboto",
-});
 
 export default function RootLayout({
   children,
@@ -21,7 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${roboto.variable} antialiased font-sans`}>
+      <body className="antialiased font-sans bg-[#F8F9FA] text-[#202124] min-h-screen flex flex-col">
         {children}
       </body>
     </html>

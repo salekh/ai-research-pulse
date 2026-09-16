@@ -1,19 +1,67 @@
 import { GoogleAuth } from 'google-auth-library';
+import { GoogleGenAI } from '@google/genai';
 
-const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT;
-const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
+export const project =
+  process.env.GOOGLE_CLOUD_PROJECT ||
+  process.env.GCLOUD_PROJECT ||
+  'sa-nexus-gcp-4-sandbox-183936';
+export const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
 
-// Module-level singleton — the google-auth-library caches tokens internally,
-// but we also avoid re-allocating the client object on every call.
+export const MODEL_REGISTRY = {
+  PRIMARY: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+  FALLBACKS: ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'],
+  TTS: 'gemini-2.5-pro-preview-tts',
+  EMBEDDING: 'text-embedding-004',
+  RERANKER: 'semantic-ranker-512@latest',
+} as const;
+
+export interface AITelemetry {
+  primaryModel: string;
+  activeModel: string;
+  totalCalls: number;
+  fallbackCount: number;
+  authStatus: 'ok' | 'reauth_needed' | 'api_key';
+  lastError?: string;
+  avgLatencyMs: number;
+}
+
+const telemetry: AITelemetry = {
+  primaryModel: MODEL_REGISTRY.PRIMARY,
+  activeModel: MODEL_REGISTRY.PRIMARY,
+  totalCalls: 0,
+  fallbackCount: 0,
+  authStatus: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY ? 'api_key' : 'ok',
+  avgLatencyMs: 0,
+};
+
+export function getAITelemetry(): AITelemetry {
+  return { ...telemetry };
+}
+
+// Module-level GoogleAuth singleton for REST calls (embeddings, reranker)
 const auth = new GoogleAuth({
   scopes: ['https://www.googleapis.com/auth/cloud-platform'],
 });
 
+let _aiClient: GoogleGenAI | null = null;
+
+export function getGenAIClient(): GoogleGenAI {
+  if (!_aiClient) {
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    if (apiKey) {
+      _aiClient = new GoogleGenAI({ apiKey });
+      telemetry.authStatus = 'api_key';
+    } else {
+      _aiClient = new GoogleGenAI({ vertexai: true, project, location });
+    }
+  }
+  return _aiClient;
+}
+
 /**
  * Returns a valid Bearer token using the module-level auth singleton.
- * Token caching is handled internally by google-auth-library.
  */
-async function getAccessToken(): Promise<string> {
+export async function getAccessToken(): Promise<string> {
   const client = await auth.getClient();
   const tokenResponse = await client.getAccessToken();
   const token = tokenResponse.token;
@@ -22,43 +70,123 @@ async function getAccessToken(): Promise<string> {
 }
 
 /**
- * Generates a text embedding using Vertex AI text-embedding-004.
- * Returns null if the project is not configured or the call fails.
+ * Resilient content generation that defaults to `gemini-3.8-flash` and automatically
+ * cascades through fallbacks if an endpoint returns 404/400 or auth error.
  */
-export async function getEmbedding(text: string): Promise<number[] | null> {
-  if (!project) {
-    console.warn('[vertex] GOOGLE_CLOUD_PROJECT not set — skipping embedding');
-    return null;
+export async function generateContentWithFallback(options: {
+  contents: any;
+  config?: any;
+  preferredModel?: string;
+}): Promise<{ text: string; modelUsed: string }> {
+  const start = Date.now();
+  telemetry.totalCalls++;
+
+  const modelsToTry = options.preferredModel
+    ? [options.preferredModel, ...MODEL_REGISTRY.FALLBACKS.filter((m) => m !== options.preferredModel)]
+    : [...MODEL_REGISTRY.FALLBACKS];
+
+  const ai = getGenAIClient();
+  let lastError: any = null;
+
+  for (let i = 0; i < modelsToTry.length; i++) {
+    const model = modelsToTry[i];
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: options.contents,
+        config: options.config,
+      });
+
+      const text = response.text;
+      if (text) {
+        const elapsed = Date.now() - start;
+        telemetry.avgLatencyMs = Math.round(
+          (telemetry.avgLatencyMs * (telemetry.totalCalls - 1) + elapsed) / telemetry.totalCalls
+        );
+        telemetry.activeModel = model;
+        telemetry.authStatus = process.env.GEMINI_API_KEY ? 'api_key' : 'ok';
+        if (i > 0) telemetry.fallbackCount++;
+        return { text, modelUsed: model };
+      }
+    } catch (err: any) {
+      lastError = err;
+      const errMsg = String(err?.message || err);
+      telemetry.lastError = errMsg.slice(0, 200);
+
+      // If ADC reauth is needed (invalid_rapt), no Vertex model will succeed until gcloud auth login
+      if (errMsg.includes('invalid_rapt') || errMsg.includes('invalid_grant')) {
+        telemetry.authStatus = 'reauth_needed';
+        console.warn(
+          `[vertex] Cloudtop ADC reauth required (invalid_rapt). Run 'gcloud auth application-default login' or set GEMINI_API_KEY.`
+        );
+        break;
+      }
+      console.warn(`[vertex] Model ${model} failed (${errMsg.slice(0, 80)}), trying fallback...`);
+    }
   }
+
+  throw lastError || new Error('All Gemini models failed to generate content');
+}
+
+/**
+ * Generates embeddings in batches (up to 100 per API call) using Vertex AI text-embedding-004.
+ * Replaces serial N+1 HTTP calls with single batched requests.
+ */
+export async function getEmbeddingsBatch(texts: string[]): Promise<(number[] | null)[]> {
+  if (texts.length === 0) return [];
+  if (!project) {
+    console.warn('[vertex] GOOGLE_CLOUD_PROJECT not set — skipping embeddings');
+    return texts.map(() => null);
+  }
+
+  const BATCH_SIZE = 100;
+  const results: (number[] | null)[] = [];
+
   try {
     const token = await getAccessToken();
-    const endpoint = `https://${location}-aiplatform.googleapis.com/v1/projects/${project}/locations/${location}/publishers/google/models/text-embedding-004:predict`;
+    const endpoint =
+      location === 'global'
+        ? `https://aiplatform.googleapis.com/v1/projects/${project}/locations/global/publishers/google/models/${MODEL_REGISTRY.EMBEDDING}:predict`
+        : `https://${location}-aiplatform.googleapis.com/v1/projects/${project}/locations/${location}/publishers/google/models/${MODEL_REGISTRY.EMBEDDING}:predict`;
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        instances: [{ content: text }],
-      }),
-    });
+    for (let i = 0; i < texts.length; i += BATCH_SIZE) {
+      const chunk = texts.slice(i, i + BATCH_SIZE);
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          instances: chunk.map((t) => ({ content: t.slice(0, 6000) })),
+        }),
+      });
 
-    if (!response.ok) {
-      throw new Error(`Vertex AI embedding API failed: ${response.status} ${response.statusText}`);
+      if (!response.ok) {
+        throw new Error(`Vertex AI batch embedding failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const predictions = data.predictions || [];
+      for (let j = 0; j < chunk.length; j++) {
+        results.push((predictions[j]?.embeddings?.values as number[]) || null);
+      }
     }
-
-    const data = await response.json();
-    return data.predictions[0].embeddings.values as number[];
-  } catch (e) {
-    console.error('[vertex] Error generating embedding:', e);
-    return null;
+    return results;
+  } catch (e: any) {
+    const errMsg = String(e?.message || e);
+    if (errMsg.includes('invalid_rapt') || errMsg.includes('invalid_grant')) {
+      telemetry.authStatus = 'reauth_needed';
+    }
+    console.warn('[vertex] Batch embedding fallback (auth/network):', errMsg.slice(0, 120));
+    return texts.map(() => null);
   }
 }
 
 /**
- * Returns a valid Bearer token for use with other Vertex / Discovery Engine APIs
- * (e.g. the reranker). Exported so callers don't need to manage their own auth.
+ * Single text embedding helper (delegates to batch).
  */
-export { getAccessToken, project, location };
+export async function getEmbedding(text: string): Promise<number[] | null> {
+  const [res] = await getEmbeddingsBatch([text]);
+  return res ?? null;
+}
