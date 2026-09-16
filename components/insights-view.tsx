@@ -70,6 +70,13 @@ function AudioPlayerCard({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState<{
+    transcript: string;
+    modelUsed: string;
+    diarizedSegments?: Array<{ speaker: string; text: string; timestamp?: string }>;
+  } | null>(null);
+
   const togglePlay = () => {
     if (!audioRef.current) return;
     if (isPlaying) {
@@ -78,6 +85,25 @@ function AudioPlayerCard({
       audioRef.current.play();
     }
     setIsPlaying(!isPlaying);
+  };
+
+  const handleTranscribe = async () => {
+    setIsTranscribing(true);
+    try {
+      const res = await fetch('/api/insights/transcribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audioUrl: audioSrc, mimeType: 'audio/wav' }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setLiveTranscript(data);
+      }
+    } catch (e) {
+      console.error('Transcription error:', e);
+    } finally {
+      setIsTranscribing(false);
+    }
   };
 
   const formatTime = (t: number) => {
@@ -148,9 +174,48 @@ function AudioPlayerCard({
           </div>
         </div>
 
-        {transcript && (
-          <div className="mt-4 pt-3 border-t border-[#DADCE0]/60">
-            <TranscriptViewer transcript={transcript} title="Read Full Script" />
+        <div className="mt-4 pt-3 border-t border-[#DADCE0]/60 flex flex-wrap items-center justify-between gap-2">
+          {transcript && <TranscriptViewer transcript={transcript} title="Read Full Script" />}
+          <button
+            onClick={handleTranscribe}
+            disabled={isTranscribing}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-mono text-[#4471ED] bg-[#E8F0FE] hover:bg-[#D2E3FC] transition-colors cursor-pointer disabled:opacity-50"
+          >
+            {isTranscribing ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <Sparkles className="w-3 h-3" />
+            )}
+            <span>{isTranscribing ? 'Transcribing…' : 'Multimodal Transcribe (3.8 Flash)'}</span>
+          </button>
+        </div>
+
+        {liveTranscript && (
+          <div className="mt-3 p-3 rounded-lg bg-[#F8F9FA] border border-[#DADCE0] text-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-[10px] uppercase text-[#137333] bg-[#E6F4EA] px-2 py-0.5 rounded font-semibold">
+                Diarized via {liveTranscript.modelUsed}
+              </span>
+            </div>
+            {liveTranscript.diarizedSegments && liveTranscript.diarizedSegments.length > 0 ? (
+              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                {liveTranscript.diarizedSegments.map((seg, idx) => (
+                  <div key={idx} className="text-[#3C4043] leading-relaxed">
+                    <span className="font-bold text-[#202124]">{seg.speaker}: </span>
+                    <span>{seg.text}</span>
+                    {seg.timestamp && (
+                      <span className="ml-1.5 font-mono text-[10px] text-[#5F6368]">
+                        [{seg.timestamp}]
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[#3C4043] whitespace-pre-wrap max-h-48 overflow-y-auto">
+                {liveTranscript.transcript}
+              </p>
+            )}
           </div>
         )}
       </div>

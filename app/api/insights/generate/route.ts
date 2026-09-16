@@ -16,13 +16,14 @@ export async function POST(req: NextRequest) {
 
     // Step 2: Generate Audio
     console.log("Generating audio...");
-    const audioBuffer = await synthesizeAudio(transcript, type);
-    console.log("Audio generated.");
+    const { buffer: audioBuffer, modelUsed } = await synthesizeAudio(transcript, type);
+    console.log(`Audio generated via ${modelUsed}.`);
 
     return new NextResponse(new Blob([new Uint8Array(audioBuffer)]), {
         headers: {
             'Content-Type': 'audio/wav',
             'Content-Length': audioBuffer.length.toString(),
+            'X-Model-Used': modelUsed,
         }
     });
 

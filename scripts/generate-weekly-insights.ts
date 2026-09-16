@@ -58,7 +58,8 @@ async function main() {
     fs.writeFileSync(overviewTranscriptPath, JSON.stringify({ transcript: overviewTranscript }, null, 2));
     await uploadToGCS(overviewTranscriptPath, 'insights/current-week/overview-transcript.json', 'application/json');
     
-    const overviewAudio = await synthesizeAudio(overviewTranscript, 'overview');
+    const { buffer: overviewAudio, modelUsed: overviewModel } = await synthesizeAudio(overviewTranscript, 'overview');
+    console.log(`Audio Overview synthesized via ${overviewModel}.`);
     const overviewAudioPath = path.join(outputDir, 'overview.wav');
     fs.writeFileSync(overviewAudioPath, overviewAudio);
     await uploadToGCS(overviewAudioPath, 'insights/current-week/overview.wav', 'audio/wav');
@@ -75,7 +76,8 @@ async function main() {
     fs.writeFileSync(podcastTranscriptPath, JSON.stringify({ transcript: podcastTranscript }, null, 2));
     await uploadToGCS(podcastTranscriptPath, 'insights/current-week/podcast-transcript.json', 'application/json');
     
-    const podcastAudio = await synthesizeAudio(podcastTranscript, 'podcast');
+    const { buffer: podcastAudio, modelUsed: podcastModel } = await synthesizeAudio(podcastTranscript, 'podcast');
+    console.log(`Podcast synthesized via ${podcastModel}.`);
     const podcastAudioPath = path.join(outputDir, 'podcast.wav');
     fs.writeFileSync(podcastAudioPath, podcastAudio);
     await uploadToGCS(podcastAudioPath, 'insights/current-week/podcast.wav', 'audio/wav');

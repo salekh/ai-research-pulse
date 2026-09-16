@@ -10,7 +10,15 @@ export const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
 export const MODEL_REGISTRY = {
   PRIMARY: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
   FALLBACKS: ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'],
-  TTS: 'gemini-2.5-pro-preview-tts',
+  TTS: process.env.GEMINI_TTS_MODEL || 'gemini-3.8-flash-tts',
+  TTS_MODELS: [
+    'gemini-3.8-flash-tts',
+    'gemini-3.5-flash-preview-tts',
+    'gemini-2.5-pro-preview-tts',
+    'gemini-2.5-flash-preview-tts',
+  ],
+  TRANSCRIPTION: process.env.GEMINI_TRANSCRIPTION_MODEL || 'gemini-3.8-flash',
+  TRANSCRIPTION_MODELS: ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'],
   EMBEDDING: 'text-embedding-004',
   RERANKER: 'semantic-ranker-512@latest',
 } as const;

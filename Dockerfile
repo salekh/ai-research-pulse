@@ -44,15 +44,16 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy the database and data directory
+# Copy the database and data directory with write permissions for SQLite WAL/SHM
 COPY --from=builder --chown=nextjs:nodejs /app/data ./data
+RUN chmod -R 775 ./data
 
 USER nextjs
 
-EXPOSE 3000
+EXPOSE 8080
 
-ENV PORT 3000
-# set hostname to localhost
+ENV PORT 8080
+# set hostname to 0.0.0.0
 ENV HOSTNAME "0.0.0.0"
 
 CMD ["node", "server.js"]
