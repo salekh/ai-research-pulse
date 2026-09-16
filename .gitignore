@@ -34,6 +34,5 @@ server.log
 *.tsbuildinfo
 next-env.d.ts
 
-# Generated Insights
-public/insights/current-week/
+# Generated temporary audio
 public/audio/

@@ -23,9 +23,15 @@ export async function POST(req: NextRequest) {
 
       // If not found locally or external URL, fetch over HTTP
       if (!audioBuffer) {
-        const res = await fetch(audioUrl);
+        let targetUrl = audioUrl;
+        if (audioUrl.startsWith('/insights/')) {
+          targetUrl = `https://storage.googleapis.com/ai-research-pulse-assets${audioUrl}`;
+        } else if (audioUrl.startsWith('/')) {
+          targetUrl = `${req.nextUrl.origin}${audioUrl}`;
+        }
+        const res = await fetch(targetUrl);
         if (!res.ok) {
-          throw new Error(`Failed to fetch audio from ${audioUrl}: HTTP ${res.status}`);
+          throw new Error(`Failed to fetch audio from ${targetUrl}: HTTP ${res.status}`);
         }
         const arrayBuf = await res.arrayBuffer();
         audioBuffer = Buffer.from(arrayBuf);

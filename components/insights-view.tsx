@@ -291,24 +291,37 @@ export function InsightsView() {
   useEffect(() => {
     const loadDefaults = async () => {
       const insights: any = {};
-      // Try bundled local assets first (fast & offline-ready), then GCS
+      const GCS_BASE = 'https://storage.googleapis.com/ai-research-pulse-assets';
+
+      // Overview: try local bundled first, then GCS
       try {
-        const localOverview = await fetch('/insights/current-week/overview-transcript.json');
-        if (localOverview.ok) {
-          const data = await localOverview.json();
+        let res = await fetch('/insights/current-week/overview-transcript.json');
+        let audioPath = '/insights/current-week/overview.wav';
+        if (!res.ok) {
+          res = await fetch(`${GCS_BASE}/insights/current-week/overview-transcript.json`);
+          audioPath = `${GCS_BASE}/insights/current-week/overview.wav`;
+        }
+        if (res.ok) {
+          const data = await res.json();
           insights.overview = {
-            audio: '/insights/current-week/overview.wav',
+            audio: audioPath,
             transcript: data.transcript,
           };
         }
       } catch {}
 
+      // Podcast: try local bundled first, then GCS
       try {
-        const localPodcast = await fetch('/insights/current-week/podcast-transcript.json');
-        if (localPodcast.ok) {
-          const data = await localPodcast.json();
+        let res = await fetch('/insights/current-week/podcast-transcript.json');
+        let audioPath = '/insights/current-week/podcast.wav';
+        if (!res.ok) {
+          res = await fetch(`${GCS_BASE}/insights/current-week/podcast-transcript.json`);
+          audioPath = `${GCS_BASE}/insights/current-week/podcast.wav`;
+        }
+        if (res.ok) {
+          const data = await res.json();
           insights.podcast = {
-            audio: '/insights/current-week/podcast.wav',
+            audio: audioPath,
             transcript: data.transcript,
           };
         }
