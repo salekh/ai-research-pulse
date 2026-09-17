@@ -1,0 +1,30 @@
+sequenceDiagram
+  autonumber
+  participant User as User / Weekly Cron
+  participant UI as InsightsView (AudioPlayerCard)
+  participant GenAPI as POST /api/insights/generate
+  participant TransAPI as POST /api/insights/transcribe
+  participant Flash as Vertex AI gemini-3.8-flash
+  participant TTS as Vertex AI gemini-3.8-flash-tts
+  participant GCS as GCS Bucket (ai-research-pulse-assets)
+
+  Note over User,GCS: Phase A: Multi-Speaker Audio Podcast & Commuter Briefing Synthesis
+  User->>UI: Select Research Articles & Click "Synthesize Audio"
+  UI->>GenAPI: POST { articles, type: 'podcast' | 'overview' }
+  GenAPI->>Flash: generateTranscript(articles, type)<br/>System Prompt: Dr. Anya (Researcher) & Liam (Journalist)
+  Flash-->>GenAPI: Structured Dialogue Script (750 words)
+  GenAPI->>TTS: synthesizeAudio(transcript)<br/>MultiSpeakerVoiceConfig: Aoede + Puck
+  TTS-->>GenAPI: Raw PCM Audio Stream -> WAV Header Encoding
+  GenAPI->>GCS: Upload overview.wav / podcast.wav + transcript.json
+  GenAPI-->>UI: Return WAV Buffer + Header (X-Model-Used: gemini-3.8-flash-tts)
+  UI-->>User: Render Interactive WaveformVisualizer & Audio Player
+
+  Note over User,GCS: Phase B: Live Multimodal Audio Verification & Speaker Diarization
+  User->>UI: Click "Multimodal Transcribe (3.8 Flash)"
+  UI->>TransAPI: POST { audioUrl: '/insights/current-week/overview.wav' }
+  TransAPI->>GCS: Resolve Audio Buffer (Local Bundle or GCS HTTPS Fallback)
+  GCS-->>TransAPI: Return WAV Binary Payload
+  TransAPI->>Flash: transcribeAudio(wavBuffer, 'audio/wav')<br/>inlineData Base64 + Diarization & Timestamp Prompt
+  Flash-->>TransAPI: JSON { transcript, diarizedSegments: [{ speaker, text, timestamp }] }
+  TransAPI-->>UI: Return Diarized Multimodal Output + Model Badge
+  UI-->>User: Display Speaker-Separated Transcript with Timestamps

@@ -1,0 +1,104 @@
+digraph IngestionAndHybridSearch {
+  rankdir=TB;
+  pad="0.4";
+  nodesep="0.4";
+  ranksep="0.65";
+  fontname="Google Sans";
+  fontsize=13;
+  splines=ortho;
+
+  node [
+    fontname="Google Sans Text",
+    fontsize=11,
+    shape=box,
+    style="rounded,filled",
+    fillcolor="#FFFFFF",
+    color="#DADCE0",
+    fontcolor="#202124",
+    margin="0.18,0.12"
+  ];
+
+  edge [
+    fontname="Google Sans Mono",
+    fontsize=9,
+    color="#5F6368",
+    fontcolor="#5F6368",
+    penwidth=1.3
+  ];
+
+  subgraph cluster_ingestion {
+    label="Phase 1: High-Throughput Batched Ingestion Pipeline (15x Reduction in LLM Calls)";
+    fontname="Google Sans";
+    fontsize=12;
+    fontcolor="#202124";
+    style="rounded,filled";
+    fillcolor="#F8F9FA";
+    color="#DADCE0";
+
+    rss_raw [label="1. Parallel RSS Aggregation\n7 Labs (1,504 Raw XML Items)", fillcolor="#FFFFFF"];
+    dedup [label="2. URL Deduplication\nNormalised Link Canonicalization", fillcolor="#FFFFFF"];
+    filter [
+      label="3. Pre-Storage Content Filter\nfilterTechnicalArticles()\n• Purges /team/, /policies/, PR noise\n• Retains 1,464 High-Signal Papers",
+      fillcolor="#FEF7E0",
+      color="#FBBC04"
+    ];
+    batch_tags [
+      label="4a. Batched Taxonomy Tagging\ngenerateTagsBatch() via gemini-3.8-flash\n• 15 Articles per JSON Prompt\n• 36 Canonical ML Taxonomy Tags",
+      fillcolor="#E8F0FE",
+      color="#4471ED"
+    ];
+    batch_embed [
+      label="4b. Batched Vector Embeddings\ngetEmbeddingsBatch() via text-embedding-004\n• 100 Articles per HTTP Predict Call\n• 768-Dimensional Dense Vectors",
+      fillcolor="#E6F4EA",
+      color="#34A853"
+    ];
+    upsert_all [
+      label="5. Multi-Tier Bulk Upsert\nsaveArticles() -> SQLite + Cloud SQL + GCS",
+      fillcolor="#FFFFFF",
+      penwidth=1.5
+    ];
+
+    rss_raw -> dedup -> filter;
+    filter -> batch_tags;
+    filter -> batch_embed;
+    batch_tags -> upsert_all;
+    batch_embed -> upsert_all;
+  }
+
+  subgraph cluster_retrieval {
+    label="Phase 2: Sub-15ms Hybrid Semantic Vector + BM25 Lexical Retrieval Engine";
+    fontname="Google Sans";
+    fontsize=12;
+    fontcolor="#1967D2";
+    style="rounded,filled";
+    fillcolor="#E8F0FE";
+    color="#4471ED";
+    penwidth=1.5;
+
+    user_q [label="User Search Query q\n(e.g. 'Agentic Harnesses')", fillcolor="#FFFFFF", color="#4471ED"];
+    q_embed [label="Query Embedding e_q\ntext-embedding-004 (768-dim)", fillcolor="#FFFFFF"];
+    vec_score [
+      label="Semantic Vector Similarity\n0.65 * max(0, cos(e_q, e_d))\n(pgvector HNSW / Cosine)",
+      fillcolor="#FFFFFF",
+      color="#4285F4"
+    ];
+    lex_score [
+      label="BM25 Lexical Keyword Boost\n• Title Match (+0.45)\n• Taxonomy Tag Match (+0.35)\n• Multi-Term Convergence (+0.20)",
+      fillcolor="#FFFFFF",
+      color="#34A853"
+    ];
+    rank_merge [
+      label="Hybrid Rank Fusion & Top-K Sort\nScore(q,d) = Vector + Lexical + Convergence\nReturns Ranked Articles with % Match Badge",
+      fillcolor="#FFFFFF",
+      color="#1967D2",
+      penwidth=1.5
+    ];
+
+    user_q -> q_embed -> vec_score;
+    user_q -> lex_score;
+    vec_score -> rank_merge;
+    lex_score -> rank_merge;
+  }
+
+  upsert_all -> vec_score [style="dashed", label="Indexed Corpus (1,698 rows)"];
+}

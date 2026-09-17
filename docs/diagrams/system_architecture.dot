@@ -1,0 +1,185 @@
+digraph SystemArchitecture {
+  rankdir=LR;
+  pad="0.4";
+  nodesep="0.45";
+  ranksep="0.75";
+  fontname="Google Sans";
+  fontsize=13;
+  compound=true;
+  splines=ortho;
+
+  node [
+    fontname="Google Sans Text",
+    fontsize=11,
+    shape=box,
+    style="rounded,filled",
+    fillcolor="#FFFFFF",
+    color="#DADCE0",
+    fontcolor="#202124",
+    margin="0.18,0.12"
+  ];
+
+  edge [
+    fontname="Google Sans Mono",
+    fontsize=9,
+    color="#5F6368",
+    fontcolor="#5F6368",
+    penwidth=1.3
+  ];
+
+  subgraph cluster_sources {
+    label="7 Frontier AI Research Labs (RSS / Atom)";
+    fontname="Google Sans";
+    fontsize=12;
+    fontcolor="#202124";
+    style="rounded,filled";
+    fillcolor="#F8F9FA";
+    color="#DADCE0";
+
+    lab_google [label="Google Research\n& Google DeepMind", fillcolor="#E8F0FE", color="#4285F4"];
+    lab_openai [label="OpenAI\nResearch News", fillcolor="#FFFFFF"];
+    lab_anthropic [label="Anthropic\nResearch & Alignment", fillcolor="#FFFFFF"];
+    lab_others [label="Meta AI · Microsoft\nResearch · x.AI", fillcolor="#FFFFFF"];
+  }
+
+  subgraph cluster_scheduler {
+    label="Autonomous Scheduling (GCP Free Tier)";
+    fontname="Google Sans";
+    fontsize=12;
+    fontcolor="#202124";
+    style="rounded,filled";
+    fillcolor="#FEF7E0";
+    color="#FBBC04";
+
+    cron_job [
+      label="Cloud Scheduler\nai-research-pulse-auto-ingest\n(0 */6 * * * · $0.00/mo)",
+      fillcolor="#FFFFFF",
+      color="#FBBC04"
+    ];
+  }
+
+  subgraph cluster_cloudrun {
+    label="Google Cloud Run Service (ai-research-pulse · sa-learning-1 · us-central1)";
+    fontname="Google Sans";
+    fontsize=13;
+    fontcolor="#1967D2";
+    style="rounded,filled";
+    fillcolor="#F4F6F9";
+    color="#4471ED";
+    penwidth=1.8;
+
+    subgraph cluster_ui {
+      label="Next.js 14 App Router Frontend (FDE Design System · 17.5px Scale)";
+      fontname="Google Sans";
+      fontsize=11;
+      style="rounded,filled";
+      fillcolor="#FFFFFF";
+      color="#DADCE0";
+
+      ui_hero [label="SearchHero & Feed\n(Hybrid Rank + Lab Filters)"];
+      ui_audio [label="AudioPlayerCard\n(Podcasts + Live Transcribe)"];
+      ui_self [label="SelfImproveView\n(Telemetry + Meta-Audit UI)"];
+    }
+
+    subgraph cluster_api {
+      label="Resilient Backend API Routes";
+      fontname="Google Sans";
+      fontsize=11;
+      style="rounded,filled";
+      fillcolor="#FFFFFF";
+      color="#DADCE0";
+
+      api_ingest [label="POST /api/admin/ingest\n(Mutex + Cooldown Guard)", fillcolor="#E8F0FE", color="#4471ED"];
+      api_news [label="GET /api/news\n(Hybrid Vector + BM25 Search)"];
+      api_summarize [label="POST /api/summarize\n(Executive Briefing + Cache)"];
+      api_audio [label="POST /api/insights/generate\nPOST /api/insights/transcribe"];
+      api_improve [label="GET/POST /api/self-improve\n(Recursive Meta-Auditor)"];
+    }
+  }
+
+  subgraph cluster_vertex {
+    label="Google Cloud Vertex AI (MODEL_REGISTRY)";
+    fontname="Google Sans";
+    fontsize=12;
+    fontcolor="#137333";
+    style="rounded,filled";
+    fillcolor="#E6F4EA";
+    color="#34A853";
+    penwidth=1.5;
+
+    model_flash [
+      label="gemini-3.8-flash (PRIMARY)\n• Executive Summarization\n• 15-Item Batch Tagging\n• Podcast Script Generation\n• Multimodal Audio Diarization",
+      fillcolor="#FFFFFF",
+      color="#34A853",
+      penwidth=1.5
+    ];
+    model_tts [
+      label="gemini-3.8-flash-tts\n• Multi-Speaker Synthesis\n  (Dr. Anya: Aoede / Liam: Puck)\n• Fallback Cascade -> 3.5/2.5 TTS",
+      fillcolor="#FFFFFF",
+      color="#34A853"
+    ];
+    model_emb [
+      label="text-embedding-004\n• 768-Dim Dense Vectors\n• 100-Item Batch API Calls",
+      fillcolor="#FFFFFF",
+      color="#34A853"
+    ];
+  }
+
+  subgraph cluster_storage {
+    label="3-Tier Zero-Loss Persistence & Self-Healing Archival Layer (1,698 Articles · 603 from 2026)";
+    fontname="Google Sans";
+    fontsize=12;
+    fontcolor="#202124";
+    style="rounded,filled";
+    fillcolor="#E8F0FE";
+    color="#1967D2";
+    penwidth=1.8;
+
+    tier1_pg [
+      label="Tier 1: Cloud SQL PostgreSQL\n(ai-research-pulse-db)\n• pgvector Cosine Search\n• Singleton Pool (max: 5)\n• Auto-Migration (ALTER TABLE)",
+      fillcolor="#FFFFFF",
+      color="#4285F4",
+      penwidth=1.5
+    ];
+    tier2_sqlite [
+      label="Tier 2: Native SQLite Engine\n(node:sqlite · data/news.db)\n• Sub-2ms Local Reads & Cache\n• Instant Offline Failover\n• Bundled Container Seed",
+      fillcolor="#FFFFFF",
+      color="#4471ED"
+    ];
+    tier3_gcs [
+      label="Tier 3: GCS Master Archive\n(gs://ai-research-pulse-assets)\n• articles-master.json + news.db\n• 11-Nines Durability (<$0.0002/mo)\n• Cold-Start Auto-Hydration",
+      fillcolor="#FFFFFF",
+      color="#34A853",
+      penwidth=1.5
+    ];
+  }
+
+  // Connections
+  cron_job -> api_ingest [label="HTTP POST (6h)", color="#EA4335", penwidth=1.5];
+  lab_google -> api_ingest [label="RSS XML"];
+  lab_openai -> api_ingest [label="RSS XML"];
+  lab_anthropic -> api_ingest [label="RSS XML"];
+  lab_others -> api_ingest [label="RSS XML"];
+
+  ui_hero -> api_news [label="Query"];
+  ui_hero -> api_summarize [label="Briefing"];
+  ui_audio -> api_audio [label="WAV / Diarize"];
+  ui_self -> api_improve [label="Audit Cycle"];
+
+  api_ingest -> model_flash [label="Batch Tags (15x)"];
+  api_ingest -> model_emb [label="Batch Embed (100x)"];
+  api_summarize -> model_flash [label="Synthesis"];
+  api_audio -> model_flash [label="Script + Transcribe"];
+  api_audio -> model_tts [label="Multi-Speaker TTS"];
+  api_improve -> model_flash [label="Meta-Audit JSON"];
+
+  api_ingest -> tier1_pg [label="Bulk Upsert"];
+  api_ingest -> tier2_sqlite [label="Mirror Upsert"];
+  api_ingest -> tier3_gcs [label="Async Backup", style="dashed", color="#137333"];
+
+  api_news -> tier1_pg [label="Vector + BM25"];
+  api_news -> tier2_sqlite [label="Fallback Search", style="dashed"];
+
+  tier3_gcs -> tier2_sqlite [label="Cold-Start Hydrate", color="#1967D2", penwidth=1.5];
+  tier2_sqlite -> tier1_pg [label="Cross-Sync (1,698 rows)", color="#1967D2", penwidth=1.5];
+}
