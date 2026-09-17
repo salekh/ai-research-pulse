@@ -35,7 +35,7 @@ export function SiteFooter() {
             alt="AI Tech Mark"
             className="h-6 w-auto object-contain"
           />
-          <div className="text-xs text-[#5F6368]">
+          <div className="text-sm text-[#5F6368]">
             <span className="font-bold text-[#202124] font-display">Sanchit Alekh</span>
             <span className="mx-1.5">·</span>
             <span>Google Cloud AI Tech Group (FDE)</span>
@@ -44,7 +44,7 @@ export function SiteFooter() {
 
         {/* Bottom-right: Dynamic Confidentiality Matrix & Customer Swap */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5 bg-[#F8F9FA] border border-[#DADCE0] rounded-md px-2.5 py-1 text-[11px]">
+          <div className="flex items-center gap-1.5 bg-[#F8F9FA] border border-[#DADCE0] rounded-md px-3 py-1.5 text-xs">
             <span className="text-[#5F6368] font-medium">Mode:</span>
             <select
               value={confidentiality}
@@ -64,11 +64,11 @@ export function SiteFooter() {
               placeholder="Customer name (optional)..."
               value={customer}
               onChange={(e) => setCustomer(e.target.value)}
-              className="bg-[#F8F9FA] border border-[#DADCE0] rounded-md px-2.5 py-1 text-[11px] text-[#202124] placeholder:text-[#5F6368] focus:outline-none focus:border-[#4471ED] w-44"
+              className="bg-[#F8F9FA] border border-[#DADCE0] rounded-md px-3 py-1.5 text-xs text-[#202124] placeholder:text-[#5F6368] focus:outline-none focus:border-[#4471ED] w-48"
             />
           )}
 
-          <div className="text-xs font-medium text-[#5F6368] tracking-tight pl-2 border-l border-[#DADCE0]">
+          <div className="text-sm font-medium text-[#5F6368] tracking-tight pl-2 border-l border-[#DADCE0]">
             {resolveFooterString()}
           </div>
         </div>

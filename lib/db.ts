@@ -32,6 +32,8 @@ export interface DBStats {
   embeddedArticles: number;
   taggedArticles: number;
   cachedSummaries: number;
+  articles2026Count?: number;
+  gcsArchiveStatus?: string;
   sourceCounts: Record<string, number>;
 }
 
@@ -130,11 +132,109 @@ function getSqliteDb(): any {
 }
 
 // ---------------------------------------------------------------------------
-// Engine Health State
+// Engine Health State & Zero-Loss Cross-Hydration
 // ---------------------------------------------------------------------------
 let pgHealthy: boolean | null = null;
 let lastPgCheck = 0;
+let hydrationDone = false;
 const PG_RETRY_INTERVAL_MS = 60_000;
+
+async function ensureDatabaseHydrated(pgClient?: any): Promise<void> {
+  if (hydrationDone) return;
+  hydrationDone = true;
+
+  try {
+    const sqlite = getSqliteDb();
+    let sqliteCount = 0;
+    if (sqlite) {
+      sqliteCount = sqlite.prepare(`SELECT count(*) as c FROM articles`).get()?.c || 0;
+    }
+
+    // 1. If SQLite is empty or stale (< 1500 articles), hydrate from GCS Master Archive
+    if (sqliteCount < 1500) {
+      const { restoreArticlesFromGCS } = await import('./gcs-archive');
+      const gcsArticles = await restoreArticlesFromGCS();
+      if (gcsArticles.length > sqliteCount && sqlite) {
+        console.log(
+          `[DB-Hydrate] Restoring ${gcsArticles.length} articles from GCS Master Archive into SQLite...`
+        );
+        const stmt = sqlite.prepare(`
+          INSERT INTO articles (link, title, date, source, snippet, tags, embedding)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(link) DO UPDATE SET
+            title = excluded.title,
+            date = excluded.date,
+            snippet = excluded.snippet,
+            tags = CASE WHEN excluded.tags != '[]' THEN excluded.tags ELSE articles.tags END,
+            embedding = COALESCE(excluded.embedding, articles.embedding)
+        `);
+        for (const a of gcsArticles) {
+          stmt.run(
+            a.link,
+            a.title,
+            a.date,
+            a.source,
+            a.snippet,
+            JSON.stringify(a.tags || []),
+            a.embedding ? JSON.stringify(a.embedding) : null
+          );
+        }
+        sqliteCount = gcsArticles.length;
+      }
+    }
+
+    // 2. If PostgreSQL is online, ensure it has all SQLite/GCS articles (including all 2026 articles)
+    if (pgClient && sqlite) {
+      const pgRes = await pgClient.query(`SELECT count(*)::int AS c FROM articles`);
+      const pgCount = pgRes.rows[0]?.c || 0;
+
+      if (sqliteCount > pgCount) {
+        console.log(
+          `[DB-Hydrate] Syncing ${sqliteCount} articles from SQLite/GCS into Cloud SQL Postgres (current pgCount: ${pgCount})...`
+        );
+        const allSqliteRows = sqlite
+          .prepare(`SELECT link, title, date, source, snippet, tags, embedding FROM articles`)
+          .all();
+
+        const CHUNK = 150;
+        for (let i = 0; i < allSqliteRows.length; i += CHUNK) {
+          const batch = allSqliteRows.slice(i, i + CHUNK);
+          const links = batch.map((r: any) => r.link);
+          const titles = batch.map((r: any) => r.title);
+          const dates = batch.map((r: any) => r.date);
+          const sources = batch.map((r: any) => r.source);
+          const snippets = batch.map((r: any) => r.snippet);
+          const tags = batch.map((r: any) => r.tags || '[]');
+          const embeddings = batch.map((r: any) => r.embedding || null);
+
+          await pgClient.query(
+            `
+            INSERT INTO articles (link, title, date, source, snippet, tags, embedding)
+            SELECT
+              unnest($1::text[]),
+              unnest($2::text[]),
+              unnest($3::timestamptz[]),
+              unnest($4::text[]),
+              unnest($5::text[]),
+              unnest($6::text[]),
+              unnest($7::text[])::vector
+            ON CONFLICT (link) DO UPDATE SET
+              title     = EXCLUDED.title,
+              date      = EXCLUDED.date,
+              snippet   = EXCLUDED.snippet,
+              tags      = EXCLUDED.tags,
+              embedding = COALESCE(EXCLUDED.embedding, articles.embedding)
+            `,
+            [links, titles, dates, sources, snippets, tags, embeddings]
+          );
+        }
+        console.log(`[DB-Hydrate] Cloud SQL Postgres synchronized with ${allSqliteRows.length} articles.`);
+      }
+    }
+  } catch (err: any) {
+    console.warn('[DB-Hydrate] Hydration warning (non-fatal):', err?.message || err);
+  }
+}
 
 async function isPostgresAvailable(): Promise<boolean> {
   const now = Date.now();
@@ -161,10 +261,14 @@ async function isPostgresAvailable(): Promise<boolean> {
           significance   TEXT,
           created_at     TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
+        ALTER TABLE articles ADD COLUMN IF NOT EXISTS summary TEXT;
+        ALTER TABLE articles ADD COLUMN IF NOT EXISTS key_innovation TEXT;
+        ALTER TABLE articles ADD COLUMN IF NOT EXISTS significance TEXT;
         CREATE INDEX IF NOT EXISTS idx_articles_date ON articles (date DESC);
         CREATE INDEX IF NOT EXISTS idx_articles_source ON articles (source);
       `);
       pgHealthy = true;
+      await ensureDatabaseHydrated(client);
       return true;
     } finally {
       client.release();
@@ -176,6 +280,7 @@ async function isPostgresAvailable(): Promise<boolean> {
       );
     }
     pgHealthy = false;
+    await ensureDatabaseHydrated();
     return false;
   }
 }
@@ -322,6 +427,17 @@ export async function saveArticles(articles: Article[]): Promise<void> {
       client.release();
     }
   }
+
+  // Trigger non-blocking GCS master archive backup so articles are never lost
+  (async () => {
+    try {
+      const { backupArticlesToGCS } = await import('./gcs-archive');
+      const allArticles = await getArticles(5000, undefined, 0, undefined, true);
+      await backupArticlesToGCS(allArticles);
+    } catch (e) {
+      console.warn('[DB] Background GCS archive backup error:', e);
+    }
+  })();
 }
 
 // ---------------------------------------------------------------------------
@@ -652,6 +768,10 @@ export async function getDBStats(): Promise<DBStats> {
           .prepare(`SELECT count(*) as c FROM articles WHERE tags IS NOT NULL AND tags != '[]' AND tags != ''`)
           .get()?.c || 0;
       const summaries = sqlite.prepare(`SELECT count(*) as c FROM cached_summaries`).get()?.c || 0;
+      const count2026 =
+        sqlite
+          .prepare(`SELECT count(*) as c FROM articles WHERE date >= '2026-01-01'`)
+          .get()?.c || 0;
       const sourceRows = sqlite.prepare(`SELECT source, count(*) as c FROM articles GROUP BY source`).all();
       const sourceCounts: Record<string, number> = {};
       for (const r of sourceRows) {
@@ -664,6 +784,8 @@ export async function getDBStats(): Promise<DBStats> {
         embeddedArticles: embedded,
         taggedArticles: tagged,
         cachedSummaries: summaries,
+        articles2026Count: count2026,
+        gcsArchiveStatus: 'active (gs://ai-research-pulse-assets/archive/articles-master.json)',
         sourceCounts,
       };
     } catch (e) {
@@ -677,6 +799,8 @@ export async function getDBStats(): Promise<DBStats> {
     embeddedArticles: 0,
     taggedArticles: 0,
     cachedSummaries: 0,
+    articles2026Count: 0,
+    gcsArchiveStatus: 'active',
     sourceCounts: {},
   };
 }

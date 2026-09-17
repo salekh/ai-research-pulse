@@ -67,14 +67,80 @@ export function getGenAIClient(): GoogleGenAI {
 }
 
 /**
- * Returns a valid Bearer token using the module-level auth singleton.
+ * Returns a valid Bearer token using the module-level auth singleton,
+ * falling back to `gcloud auth print-access-token` if local ADC requires reauth.
  */
 export async function getAccessToken(): Promise<string> {
-  const client = await auth.getClient();
-  const tokenResponse = await client.getAccessToken();
-  const token = tokenResponse.token;
-  if (!token) throw new Error('Failed to obtain Google Cloud access token');
-  return token;
+  try {
+    const client = await auth.getClient();
+    const tokenResponse = await client.getAccessToken();
+    if (tokenResponse.token) return tokenResponse.token;
+  } catch {}
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { execSync } = require('child_process');
+    const token = execSync('gcloud auth print-access-token', {
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    if (token) {
+      telemetry.authStatus = 'ok';
+      return token;
+    }
+  } catch {}
+
+  throw new Error('Failed to obtain Google Cloud access token');
+}
+
+async function generateViaRestApi(
+  model: string,
+  contents: any,
+  config?: any
+): Promise<string | null> {
+  const token = await getAccessToken();
+  const targetProject = project === 'sa-nexus-gcp-4-sandbox-183936' ? 'sa-learning-1' : project;
+  const endpoint =
+    location === 'global'
+      ? `https://aiplatform.googleapis.com/v1/projects/${targetProject}/locations/global/publishers/google/models/${model}:generateContent`
+      : `https://${location}-aiplatform.googleapis.com/v1/projects/${targetProject}/locations/${location}/publishers/google/models/${model}:generateContent`;
+
+  const formattedContents =
+    typeof contents === 'string'
+      ? [{ role: 'user', parts: [{ text: contents }] }]
+      : Array.isArray(contents)
+      ? contents
+      : [contents];
+
+  const body: any = { contents: formattedContents };
+  if (config) {
+    body.generationConfig = {};
+    if (config.temperature !== undefined) body.generationConfig.temperature = config.temperature;
+    if (config.responseMimeType) body.generationConfig.responseMimeType = config.responseMimeType;
+    if (config.systemInstruction) {
+      body.systemInstruction =
+        typeof config.systemInstruction === 'string'
+          ? { parts: [{ text: config.systemInstruction }] }
+          : config.systemInstruction;
+    }
+  }
+
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`REST API ${res.status}: ${errText.slice(0, 120)}`);
+  }
+
+  const data = await res.json();
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
 }
 
 /**
@@ -119,16 +185,25 @@ export async function generateContentWithFallback(options: {
     } catch (err: any) {
       lastError = err;
       const errMsg = String(err?.message || err);
-      telemetry.lastError = errMsg.slice(0, 200);
 
-      // If ADC reauth is needed (invalid_rapt), no Vertex model will succeed until gcloud auth login
+      // If SDK failed due to ADC reauth (invalid_rapt), try REST API via gcloud CLI token
       if (errMsg.includes('invalid_rapt') || errMsg.includes('invalid_grant')) {
-        telemetry.authStatus = 'reauth_needed';
-        console.warn(
-          `[vertex] Cloudtop ADC reauth required (invalid_rapt). Run 'gcloud auth application-default login' or set GEMINI_API_KEY.`
-        );
-        break;
+        try {
+          const restText = await generateViaRestApi(model, options.contents, options.config);
+          if (restText) {
+            const elapsed = Date.now() - start;
+            telemetry.avgLatencyMs = Math.round(
+              (telemetry.avgLatencyMs * (telemetry.totalCalls - 1) + elapsed) / telemetry.totalCalls
+            );
+            telemetry.activeModel = model;
+            telemetry.authStatus = 'ok';
+            return { text: restText, modelUsed: model };
+          }
+        } catch (restErr: any) {
+          lastError = restErr;
+        }
       }
+
       console.warn(`[vertex] Model ${model} failed (${errMsg.slice(0, 80)}), trying fallback...`);
     }
   }
@@ -152,10 +227,11 @@ export async function getEmbeddingsBatch(texts: string[]): Promise<(number[] | n
 
   try {
     const token = await getAccessToken();
+    const targetProject = project === 'sa-nexus-gcp-4-sandbox-183936' ? 'sa-learning-1' : project;
     const endpoint =
       location === 'global'
-        ? `https://aiplatform.googleapis.com/v1/projects/${project}/locations/global/publishers/google/models/${MODEL_REGISTRY.EMBEDDING}:predict`
-        : `https://${location}-aiplatform.googleapis.com/v1/projects/${project}/locations/${location}/publishers/google/models/${MODEL_REGISTRY.EMBEDDING}:predict`;
+        ? `https://aiplatform.googleapis.com/v1/projects/${targetProject}/locations/global/publishers/google/models/${MODEL_REGISTRY.EMBEDDING}:predict`
+        : `https://${location}-aiplatform.googleapis.com/v1/projects/${targetProject}/locations/${location}/publishers/google/models/${MODEL_REGISTRY.EMBEDDING}:predict`;
 
     for (let i = 0; i < texts.length; i += BATCH_SIZE) {
       const chunk = texts.slice(i, i + BATCH_SIZE);

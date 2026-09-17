@@ -140,31 +140,31 @@ export function NewsCard({ article, onSave, isSaved = false }: NewsCardProps) {
 
       {/* Match score banner (if returned by hybrid vector/BM25 search) */}
       {article.score !== undefined && (
-        <div className="bg-[#E8F0FE] border-b border-[#DADCE0] py-1.5 px-4 flex items-center justify-between">
+        <div className="bg-[#E8F0FE] border-b border-[#DADCE0] py-2 px-5 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-[#4471ED]" />
-            <span className="text-[11px] font-bold text-[#1967D2] font-mono tabular-nums">
+            <Sparkles className="w-4 h-4 text-[#4471ED]" />
+            <span className="text-xs font-bold text-[#1967D2] font-mono tabular-nums">
               {Math.round(article.score * 100)}% Semantic Match
             </span>
           </div>
-          <span className="text-[10px] font-mono text-[#5F6368] uppercase">Hybrid Rank</span>
+          <span className="text-xs font-mono text-[#5F6368] uppercase">Hybrid Rank</span>
         </div>
       )}
 
       {/* Card Header: Lab logo + Source + Date + Save button */}
       <div
         className={`flex justify-between items-center px-5 ${
-          article.score !== undefined ? 'pt-3.5' : 'pt-5'
-        } pb-2`}
+          article.score !== undefined ? 'pt-4' : 'pt-5'
+        } pb-2.5`}
       >
         <div className="flex items-center gap-2">
           <CompanyLogo company={article.source} className="w-4 h-4" />
-          <span className="text-xs font-bold text-[#202124] tracking-tight">
+          <span className="text-sm font-bold text-[#202124] tracking-tight">
             {article.source}
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-[#5F6368] font-medium tabular-nums">
+          <span className="text-xs text-[#5F6368] font-medium tabular-nums">
             {formattedDate}
           </span>
           {onSave && (
@@ -178,9 +178,9 @@ export function NewsCard({ article, onSave, isSaved = false }: NewsCardProps) {
               title={isSaved ? 'Saved' : 'Save publication'}
             >
               {justSaved || isSaved ? (
-                <Check className="w-3.5 h-3.5" />
+                <Check className="w-4 h-4" />
               ) : (
-                <Bookmark className="w-3.5 h-3.5" />
+                <Bookmark className="w-4 h-4" />
               )}
             </button>
           )}
@@ -188,12 +188,12 @@ export function NewsCard({ article, onSave, isSaved = false }: NewsCardProps) {
       </div>
 
       {/* Title */}
-      <div className="px-5 pb-2.5">
+      <div className="px-5 pb-3">
         <a
           href={article.link}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[15px] leading-snug font-bold font-display text-[#202124] hover:text-[#4471ED] transition-colors line-clamp-2"
+          className="text-lg leading-snug font-bold font-display text-[#202124] hover:text-[#4471ED] transition-colors line-clamp-2"
         >
           {article.title}
         </a>
@@ -201,17 +201,17 @@ export function NewsCard({ article, onSave, isSaved = false }: NewsCardProps) {
 
       {/* Snippet + Technical Taxonomy Tags */}
       <div className="flex-grow px-5 pb-4 flex flex-col justify-between">
-        <p className="text-xs text-[#5F6368] line-clamp-3 leading-relaxed">
+        <p className="text-sm text-[#5F6368] line-clamp-3 leading-relaxed">
           {(article.snippet || '').replace(/<[^>]*>?/gm, '')}
         </p>
 
         <div>
           {article.tags && article.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-3.5">
+            <div className="flex flex-wrap gap-1.5 mt-4">
               {article.tags.slice(0, 4).map((tag, i) => (
                 <span
                   key={i}
-                  className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-[#F8F9FA] text-[#202124] border border-[#DADCE0]"
+                  className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-mono font-medium bg-[#F8F9FA] text-[#202124] border border-[#DADCE0]"
                 >
                   {tag}
                 </span>
@@ -228,31 +228,31 @@ export function NewsCard({ article, onSave, isSaved = false }: NewsCardProps) {
                 exit={{ opacity: 0, height: 0 }}
                 className="overflow-hidden"
               >
-                <div className="mt-4 bg-[#F8F9FA] rounded-lg p-3.5 border-l-4 border-[#4471ED] border-t border-r border-b border-t-[#DADCE0] border-r-[#DADCE0] border-b-[#DADCE0] space-y-2.5">
+                <div className="mt-4 bg-[#F8F9FA] rounded-lg p-4 border-l-4 border-[#4471ED] border-t border-r border-b border-t-[#DADCE0] border-r-[#DADCE0] border-b-[#DADCE0] space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
-                      <Cpu className="w-3.5 h-3.5 text-[#4471ED]" />
-                      <span className="text-[11px] font-bold text-[#202124] uppercase tracking-wider font-display">
+                      <Cpu className="w-4 h-4 text-[#4471ED]" />
+                      <span className="text-xs font-bold text-[#202124] uppercase tracking-wider font-display">
                         Executive Briefing
                       </span>
                     </div>
                     {summaryData && (
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#E8F0FE] text-[#1967D2]">
+                      <span className="text-xs font-mono px-2 py-0.5 rounded bg-[#E8F0FE] text-[#1967D2]">
                         {summaryData.cached ? 'Cached · <2ms' : summaryData.modelUsed || 'gemini-3.8-flash'}
                       </span>
                     )}
                   </div>
 
                   {isGenerating ? (
-                    <div className="flex items-center gap-2 text-xs text-[#5F6368] py-2">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[#4471ED]" />
+                    <div className="flex items-center gap-2 text-sm text-[#5F6368] py-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-[#4471ED]" />
                       <span>Synthesizing technical contribution via Gemini 3.8 Flash…</span>
                     </div>
                   ) : summaryData ? (
-                    <div className="space-y-2 text-xs">
+                    <div className="space-y-2.5 text-sm">
                       {summaryData.keyInnovation && (
-                        <div className="bg-white p-2.5 rounded border border-[#DADCE0]">
-                          <span className="font-bold text-[#4471ED] uppercase text-[10px] block mb-0.5 font-mono">
+                        <div className="bg-white p-3 rounded border border-[#DADCE0]">
+                          <span className="font-bold text-[#4471ED] uppercase text-xs block mb-1 font-mono">
                             Core Technical Innovation
                           </span>
                           <p className="text-[#202124] font-medium leading-snug">
@@ -260,7 +260,7 @@ export function NewsCard({ article, onSave, isSaved = false }: NewsCardProps) {
                           </p>
                         </div>
                       )}
-                      <div className="text-[#5F6368] leading-relaxed">
+                      <div className="text-[#3C4043] leading-relaxed">
                         <ReactMarkdown>{summaryData.summary}</ReactMarkdown>
                       </div>
                     </div>
@@ -273,20 +273,20 @@ export function NewsCard({ article, onSave, isSaved = false }: NewsCardProps) {
       </div>
 
       {/* Card Footer */}
-      <div className="px-5 py-3 flex justify-between items-center mt-auto border-t border-[#DADCE0]/70 bg-[#F8F9FA]/50">
+      <div className="px-5 py-3.5 flex justify-between items-center mt-auto border-t border-[#DADCE0]/70 bg-[#F8F9FA]/50">
         <a
           href={article.link}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center text-xs font-semibold text-[#5F6368] hover:text-[#202124] transition-colors gap-1"
+          className="inline-flex items-center text-sm font-semibold text-[#5F6368] hover:text-[#202124] transition-colors gap-1.5"
         >
           <span>Read Paper</span>
-          <ExternalLink className="w-3 h-3" />
+          <ExternalLink className="w-3.5 h-3.5" />
         </a>
 
         <button
           onClick={handleGenerateOverview}
-          className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-md transition-all cursor-pointer ${
+          className={`inline-flex items-center gap-1.5 text-sm font-semibold px-3.5 py-1.5 rounded-md transition-all cursor-pointer ${
             isExpanded
               ? 'bg-[#202124] text-white'
               : summaryData
@@ -295,16 +295,16 @@ export function NewsCard({ article, onSave, isSaved = false }: NewsCardProps) {
           }`}
         >
           {isGenerating ? (
-            <Loader2 className="w-3 h-3 animate-spin" />
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
           ) : summaryData ? (
-            <Zap className="w-3 h-3 text-[#4471ED]" />
+            <Zap className="w-3.5 h-3.5 text-[#4471ED]" />
           ) : (
-            <Sparkles className="w-3 h-3 text-[#4471ED]" />
+            <Sparkles className="w-3.5 h-3.5 text-[#4471ED]" />
           )}
           <span>
             {isExpanded ? 'Hide Briefing' : summaryData ? 'Instant Briefing' : 'Summarize'}
           </span>
-          {!isExpanded && <ChevronDown className="w-3 h-3" />}
+          {!isExpanded && <ChevronDown className="w-3.5 h-3.5" />}
         </button>
       </div>
     </div>

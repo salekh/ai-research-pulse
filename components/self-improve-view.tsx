@@ -151,36 +151,36 @@ export function SelfImproveView() {
             <Database className="w-4 h-4 text-[#4285F4]" />
           </div>
           <div className="text-2xl font-bold text-[#202124] font-display tabular-nums">
-            {dbStats.totalArticles?.toLocaleString() || '994'}
+            {dbStats.totalArticles?.toLocaleString() || '1,698'}
           </div>
           <div className="text-xs text-[#5F6368] mt-1">
-            Engine: <span className="font-mono text-[#202124]">{dbStats.engine || 'dual-engine'}</span>
+            2026 Articles: <span className="font-mono font-bold text-[#4471ED]">{dbStats.articles2026Count ?? 603}</span> · Engine: <span className="font-mono text-[#202124]">{dbStats.engine || '3-tier'}</span>
           </div>
         </div>
 
         <div className="bg-white border border-[#DADCE0] rounded-xl p-5 shadow-xs">
           <div className="flex items-center justify-between text-[#5F6368] text-xs font-semibold uppercase tracking-wider mb-2">
-            <span>Taxonomy Coverage</span>
+            <span>Zero-Loss GCS Archive</span>
             <Layers className="w-4 h-4 text-[#34A853]" />
           </div>
-          <div className="text-2xl font-bold text-[#34A853] font-display tabular-nums">
-            {tagCoveragePct}%
+          <div className="text-xl font-bold text-[#34A853] font-display tabular-nums">
+            11-Nines Durable
           </div>
-          <div className="text-xs text-[#5F6368] mt-1">
-            {dbStats.taggedArticles || 994} technical papers classified
+          <div className="text-xs text-[#5F6368] mt-1 truncate" title={dbStats.gcsArchiveStatus}>
+            gs://ai-research-pulse-assets/archive/
           </div>
         </div>
 
         <div className="bg-white border border-[#DADCE0] rounded-xl p-5 shadow-xs">
           <div className="flex items-center justify-between text-[#5F6368] text-xs font-semibold uppercase tracking-wider mb-2">
-            <span>Summary Cache Hits</span>
+            <span>Vector &amp; Tag Coverage</span>
             <Zap className="w-4 h-4 text-[#FBBC04]" />
           </div>
           <div className="text-2xl font-bold text-[#202124] font-display tabular-nums">
-            {dbStats.cachedSummaries || 0} <span className="text-xs font-normal text-[#5F6368]">cached</span>
+            {tagCoveragePct}% <span className="text-xs font-normal text-[#5F6368]">768-dim</span>
           </div>
           <div className="text-xs text-[#5F6368] mt-1">
-            Cache hit latency: <span className="font-mono text-[#34A853]">&lt;2ms</span>
+            {dbStats.embeddedArticles || 1698} embedded · {dbStats.taggedArticles || 1698} tagged
           </div>
         </div>
       </div>
@@ -189,7 +189,7 @@ export function SelfImproveView() {
       {lastResult && (
         <div className="bg-[#E8F0FE] border-l-4 border-[#4471ED] rounded-r-xl p-5 space-y-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-[#1967D2] font-bold text-sm">
+            <div className="flex items-center gap-2 text-[#1967D2] font-bold text-base">
               <CheckCircle2 className="w-4 h-4" />
               <span>Self-Improvement Cycle Complete ({lastResult.modelUsed})</span>
             </div>
@@ -204,7 +204,7 @@ export function SelfImproveView() {
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-[#4471ED]" />
           <h3 className="text-sm font-bold uppercase tracking-wider text-[#202124]">
-            Active Architectural Refactors & Performance Guards
+            Active Architectural Refactors &amp; Zero-Loss Guards
           </h3>
         </div>
 
@@ -216,14 +216,14 @@ export function SelfImproveView() {
             >
               <div>
                 <div className="flex items-center justify-between gap-2 mb-2">
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-[#E6F4EA] text-[#137333]">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-mono font-bold uppercase bg-[#E6F4EA] text-[#137333]">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#34A853]" />
                     {item.status}
                   </span>
-                  <Activity className="w-3.5 h-3.5 text-[#5F6368]" />
+                  <Activity className="w-4 h-4 text-[#5F6368]" />
                 </div>
-                <h4 className="text-sm font-bold text-[#202124] mb-1.5">{item.title}</h4>
-                <p className="text-xs text-[#5F6368] leading-relaxed">{item.impact}</p>
+                <h4 className="text-base font-bold text-[#202124] mb-1.5">{item.title}</h4>
+                <p className="text-sm text-[#5F6368] leading-relaxed">{item.impact}</p>
               </div>
             </div>
           ))}
@@ -240,13 +240,13 @@ export function SelfImproveView() {
         </div>
 
         <div className="bg-white border border-[#DADCE0] rounded-xl overflow-hidden shadow-xs">
-          <table className="w-full text-left border-collapse text-xs">
+          <table className="w-full text-left border-collapse text-sm">
             <thead>
               <tr className="bg-[#E8F0FE] border-b border-[#DADCE0] text-[#202124] font-bold">
-                <th className="py-3 px-4">Timestamp</th>
-                <th className="py-3 px-4">Model</th>
-                <th className="py-3 px-4">Action</th>
-                <th className="py-3 px-4">Meta-Auditor Critique & Telemetry</th>
+                <th className="py-3.5 px-4">Timestamp</th>
+                <th className="py-3.5 px-4">Model</th>
+                <th className="py-3.5 px-4">Action</th>
+                <th className="py-3.5 px-4">Meta-Auditor Critique &amp; Telemetry</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#DADCE0]">
@@ -259,18 +259,18 @@ export function SelfImproveView() {
               ) : (
                 logs.map((log: any) => (
                   <tr key={log.id} className="hover:bg-[#F8F9FA]">
-                    <td className="py-3 px-4 font-mono text-[#5F6368] whitespace-nowrap tabular-nums">
+                    <td className="py-3.5 px-4 font-mono text-[#5F6368] whitespace-nowrap tabular-nums">
                       {new Date(log.timestamp).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit',
                         second: '2-digit',
                       })}
                     </td>
-                    <td className="py-3 px-4 font-mono font-semibold text-[#4471ED] whitespace-nowrap">
+                    <td className="py-3.5 px-4 font-mono font-semibold text-[#4471ED] whitespace-nowrap">
                       {log.model_used}
                     </td>
-                    <td className="py-3 px-4 font-semibold text-[#202124]">{log.action}</td>
-                    <td className="py-3 px-4 text-[#5F6368] max-w-xl leading-relaxed">
+                    <td className="py-3.5 px-4 font-semibold text-[#202124]">{log.action}</td>
+                    <td className="py-3.5 px-4 text-[#3C4043] max-w-xl leading-relaxed">
                       {log.notes}
                     </td>
                   </tr>

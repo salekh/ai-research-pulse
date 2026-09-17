@@ -164,7 +164,7 @@ export function SearchHero({ onSearch, onShowFeed }: SearchHeroProps) {
             <button
               key={topic}
               onClick={() => onSearch(topic)}
-              className="px-3.5 py-1.5 rounded-full text-xs font-medium bg-white/8 hover:bg-[#4471ED]/30 hover:border-[#4471ED] text-[#E8EAED] border border-white/12 transition-all cursor-pointer"
+              className="px-4 py-2 rounded-full text-sm font-medium bg-white/8 hover:bg-[#4471ED]/30 hover:border-[#4471ED] text-[#E8EAED] border border-white/12 transition-all cursor-pointer"
             >
               {topic}
             </button>
@@ -175,7 +175,7 @@ export function SearchHero({ onSearch, onShowFeed }: SearchHeroProps) {
         <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
           <Button
             onClick={() => onShowFeed('feed')}
-            className="h-12 px-7 rounded-xl bg-white text-[#202124] hover:bg-[#F8F9FA] font-bold text-sm shadow-lg flex items-center gap-2.5 cursor-pointer"
+            className="h-12 px-7 rounded-xl bg-white text-[#202124] hover:bg-[#F8F9FA] font-bold text-base shadow-lg flex items-center gap-2.5 cursor-pointer"
           >
             <Layers className="w-4 h-4 text-[#4471ED]" />
             <span>Explore Research Feed</span>
@@ -184,7 +184,7 @@ export function SearchHero({ onSearch, onShowFeed }: SearchHeroProps) {
           <Button
             onClick={() => onShowFeed('trends')}
             variant="outline"
-            className="h-12 px-6 rounded-xl bg-white/10 hover:bg-white/15 text-white border-white/20 font-semibold text-sm flex items-center gap-2 cursor-pointer"
+            className="h-12 px-6 rounded-xl bg-white/10 hover:bg-white/15 text-white border-white/20 font-semibold text-base flex items-center gap-2 cursor-pointer"
           >
             <TrendingUp className="w-4 h-4 text-[#8ab4f8]" />
             <span>Cross-Lab Trends</span>
@@ -193,7 +193,7 @@ export function SearchHero({ onSearch, onShowFeed }: SearchHeroProps) {
           <Button
             onClick={() => onShowFeed('self-improve')}
             variant="outline"
-            className="h-12 px-6 rounded-xl bg-white/10 hover:bg-white/15 text-white border-white/20 font-semibold text-sm flex items-center gap-2 cursor-pointer"
+            className="h-12 px-6 rounded-xl bg-white/10 hover:bg-white/15 text-white border-white/20 font-semibold text-base flex items-center gap-2 cursor-pointer"
           >
             <Sparkles className="w-4 h-4 text-[#FBBC04]" />
             <span>Self-Improve Engine</span>
@@ -202,7 +202,7 @@ export function SearchHero({ onSearch, onShowFeed }: SearchHeroProps) {
           <Button
             onClick={() => (window.location.href = '/api/lucky')}
             variant="ghost"
-            className="h-12 px-5 rounded-xl text-[#BABBBC] hover:text-white hover:bg-white/8 font-medium text-sm flex items-center gap-2 cursor-pointer"
+            className="h-12 px-5 rounded-xl text-[#BABBBC] hover:text-white hover:bg-white/8 font-medium text-base flex items-center gap-2 cursor-pointer"
           >
             <Shuffle className="w-4 h-4" />
             <span>I&apos;m Feeling Lucky</span>
@@ -215,34 +215,34 @@ export function SearchHero({ onSearch, onShowFeed }: SearchHeroProps) {
         <div className="max-w-7xl mx-auto px-6 py-5 grid grid-cols-2 md:grid-cols-4 gap-6">
           <div>
             <div className="text-2xl md:text-3xl font-bold text-[#4471ED] font-display tabular-nums">
-              994
+              1,698
             </div>
-            <div className="text-xs text-[#BABBBC] mt-0.5">
-              Technical Papers Indexed &amp; Filtered
+            <div className="text-sm text-[#BABBBC] mt-0.5">
+              Technical Papers Indexed (603 from 2026)
             </div>
           </div>
           <div>
             <div className="text-2xl md:text-3xl font-bold text-white font-display tabular-nums">
-              7 Labs
+              11-Nines
             </div>
-            <div className="text-xs text-[#BABBBC] mt-0.5">
-              DeepMind, Google, OpenAI, Anthropic, Meta, MSFT, xAI
+            <div className="text-sm text-[#BABBBC] mt-0.5">
+              Zero-Loss GCS Archive + Cloud SQL + SQLite
             </div>
           </div>
           <div>
             <div className="text-2xl md:text-3xl font-bold text-[#34A853] font-mono tabular-nums">
               gemini-3.8-flash
             </div>
-            <div className="text-xs text-[#BABBBC] mt-0.5">
+            <div className="text-sm text-[#BABBBC] mt-0.5">
               Primary Reasoning &amp; Synthesis Model
             </div>
           </div>
           <div>
             <div className="text-2xl md:text-3xl font-bold text-[#FBBC04] font-display tabular-nums">
-              &lt;15 ms
+              100%
             </div>
-            <div className="text-xs text-[#BABBBC] mt-0.5">
-              Hybrid Vector + BM25 Retrieval Latency
+            <div className="text-sm text-[#BABBBC] mt-0.5">
+              768-Dim Vector Embedding &amp; Tag Coverage
             </div>
           </div>
         </div>

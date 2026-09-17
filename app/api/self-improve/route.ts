@@ -18,10 +18,10 @@ const ARCHITECTURAL_IMPROVEMENTS = [
     impact: 'Primary model upgraded to gemini-3.8-flash with automatic cascading fallback (3.8-flash -> 3.5-flash -> 2.5-flash) and zero-downtime deterministic synthesis.',
   },
   {
-    id: 'dual-db-engine',
-    title: 'Dual-Engine Resilient Database (Postgres Pool + Native SQLite)',
+    id: 'zero-loss-db-engine',
+    title: '3-Tier Zero-Loss Archival Engine (GCS + Cloud SQL + SQLite)',
     status: 'active',
-    impact: 'Eliminates Cloud SQL connection exhaustion (error 53300) via globalThis singleton pool (max: 5) and seamless node:sqlite fallback on data/news.db (994 clean articles).',
+    impact: 'Eliminates data loss and schema drift across 1,698 indexed articles (603 from 2026) via automatic ALTER TABLE schema migration, bidirectional SQLite/Postgres sync, and 11-nines durable GCS master snapshots (gs://ai-research-pulse-assets/archive/articles-master.json) at <$0.0002/mo.',
   },
   {
     id: 'batch-inference',

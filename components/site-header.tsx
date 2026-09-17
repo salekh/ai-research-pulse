@@ -26,7 +26,7 @@ export function SiteHeader({ onResetView }: { onResetView?: () => void }) {
               <span className="text-lg font-bold tracking-tight font-display leading-none text-white">
                 Research <span className="text-[#4471ED]">Pulse</span>
               </span>
-              <span className="text-[10px] font-mono uppercase tracking-widest text-[#BABBBC]">
+              <span className="text-xs font-mono uppercase tracking-widest text-[#BABBBC] mt-0.5">
                 AI Tech Group · FDE Intelligence
               </span>
             </div>

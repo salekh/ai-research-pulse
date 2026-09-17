@@ -179,12 +179,12 @@ export function NewsFeed({
           <TabsList className="bg-white border border-[#DADCE0] p-1 rounded-xl flex flex-wrap h-auto gap-1 shadow-xs">
             <TabsTrigger
               value="feed"
-              className="data-[state=active]:bg-[#202124] data-[state=active]:text-white rounded-lg px-4 py-2 text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer"
+              className="data-[state=active]:bg-[#202124] data-[state=active]:text-white rounded-lg px-4 py-2 text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer"
             >
-              <Newspaper className="w-3.5 h-3.5" />
+              <Newspaper className="w-4 h-4" />
               <span>Research Feed</span>
               {meta.totalIndexed && (
-                <span className="text-[10px] font-mono opacity-75 tabular-nums">
+                <span className="text-xs font-mono opacity-75 tabular-nums">
                   ({meta.totalIndexed})
                 </span>
               )}
@@ -192,33 +192,33 @@ export function NewsFeed({
 
             <TabsTrigger
               value="trends"
-              className="data-[state=active]:bg-[#202124] data-[state=active]:text-white rounded-lg px-4 py-2 text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer"
+              className="data-[state=active]:bg-[#202124] data-[state=active]:text-white rounded-lg px-4 py-2 text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer"
             >
-              <TrendingUp className="w-3.5 h-3.5" />
+              <TrendingUp className="w-4 h-4" />
               <span>Cross-Lab Trends</span>
             </TabsTrigger>
 
             <TabsTrigger
               value="insights"
-              className="data-[state=active]:bg-[#202124] data-[state=active]:text-white rounded-lg px-4 py-2 text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer"
+              className="data-[state=active]:bg-[#202124] data-[state=active]:text-white rounded-lg px-4 py-2 text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer"
             >
-              <Sparkles className="w-3.5 h-3.5" />
+              <Sparkles className="w-4 h-4" />
               <span>Audio &amp; Podcasts</span>
             </TabsTrigger>
 
             <TabsTrigger
               value="self-improve"
-              className="data-[state=active]:bg-[#4471ED] data-[state=active]:text-white rounded-lg px-4 py-2 text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer"
+              className="data-[state=active]:bg-[#4471ED] data-[state=active]:text-white rounded-lg px-4 py-2 text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer"
             >
-              <Cpu className="w-3.5 h-3.5" />
+              <Cpu className="w-4 h-4" />
               <span>Self-Improve Engine</span>
             </TabsTrigger>
 
             <TabsTrigger
               value="saved"
-              className="data-[state=active]:bg-[#202124] data-[state=active]:text-white rounded-lg px-3.5 py-2 text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
+              className="data-[state=active]:bg-[#202124] data-[state=active]:text-white rounded-lg px-3.5 py-2 text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
             >
-              <Bookmark className="w-3.5 h-3.5" />
+              <Bookmark className="w-4 h-4" />
               <span>Saved ({savedArticles.length})</span>
             </TabsTrigger>
           </TabsList>
@@ -231,10 +231,10 @@ export function NewsFeed({
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
-                    className="rounded-lg h-9 px-3 text-xs font-semibold border-[#DADCE0] bg-white text-[#202124] gap-1.5 cursor-pointer"
+                    className="rounded-lg h-10 px-3.5 text-sm font-semibold border-[#DADCE0] bg-white text-[#202124] gap-1.5 cursor-pointer"
                   >
                     <span>Range: {timeRangeLabels[timeRange]}</span>
-                    <ChevronDown className="w-3 h-3 text-[#5F6368]" />
+                    <ChevronDown className="w-3.5 h-3.5 text-[#5F6368]" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -258,15 +258,15 @@ export function NewsFeed({
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
-                    className="rounded-lg h-9 px-3 text-xs font-semibold border-[#DADCE0] bg-white text-[#202124] gap-1.5 cursor-pointer"
+                    className="rounded-lg h-10 px-3.5 text-sm font-semibold border-[#DADCE0] bg-white text-[#202124] gap-1.5 cursor-pointer"
                   >
                     {labFilter ? (
-                      <CompanyLogo company={labFilter as any} className="w-3.5 h-3.5" />
+                      <CompanyLogo company={labFilter as any} className="w-4 h-4" />
                     ) : (
-                      <Filter className="w-3.5 h-3.5 text-[#5F6368]" />
+                      <Filter className="w-4 h-4 text-[#5F6368]" />
                     )}
                     <span>{labFilter || 'All 7 Labs'}</span>
-                    <ChevronDown className="w-3 h-3 text-[#5F6368]" />
+                    <ChevronDown className="w-3.5 h-3.5 text-[#5F6368]" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -277,9 +277,9 @@ export function NewsFeed({
                     <DropdownMenuItem
                       key={lab}
                       onClick={() => setLabFilter(lab)}
-                      className="gap-2 text-xs"
+                      className="gap-2 text-sm"
                     >
-                      <CompanyLogo company={lab} className="w-3.5 h-3.5" />
+                      <CompanyLogo company={lab} className="w-4 h-4" />
                       <span>{lab}</span>
                     </DropdownMenuItem>
                   ))}
@@ -287,14 +287,14 @@ export function NewsFeed({
               </DropdownMenu>
 
               {/* Search Input */}
-              <form onSubmit={handleSearchSubmit} className="relative flex-1 sm:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5F6368] w-3.5 h-3.5" />
+              <form onSubmit={handleSearchSubmit} className="relative flex-1 sm:w-72">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#5F6368] w-4 h-4" />
                 <Input
                   type="text"
                   placeholder="Semantic or keyword search…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-9 pl-9 pr-8 text-xs rounded-lg border-[#DADCE0] bg-white focus:border-[#4471ED]"
+                  className="h-10 pl-10 pr-8 text-sm rounded-lg border-[#DADCE0] bg-white focus:border-[#4471ED]"
                 />
                 {searchQuery && (
                   <button
@@ -302,7 +302,7 @@ export function NewsFeed({
                     onClick={handleClearSearch}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#5F6368] hover:text-[#202124] cursor-pointer"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="w-4 h-4" />
                   </button>
                 )}
               </form>
@@ -314,10 +314,10 @@ export function NewsFeed({
                 onClick={() => fetchNews(searchQuery, true, timeRange, 1, labFilter)}
                 disabled={refreshing}
                 title="Refresh RSS Feeds (background)"
-                className="h-9 w-9 rounded-lg border-[#DADCE0] bg-white hover:border-[#4471ED] cursor-pointer"
+                className="h-10 w-10 rounded-lg border-[#DADCE0] bg-white hover:border-[#4471ED] cursor-pointer"
               >
                 <RefreshCw
-                  className={`w-3.5 h-3.5 text-[#202124] ${refreshing ? 'animate-spin' : ''}`}
+                  className={`w-4 h-4 text-[#202124] ${refreshing ? 'animate-spin' : ''}`}
                 />
               </Button>
             </div>
@@ -326,7 +326,7 @@ export function NewsFeed({
 
         {/* Active Search / Filter Banner */}
         {activeTab === 'feed' && (searchQuery || labFilter) && (
-          <div className="flex items-center justify-between bg-[#E8F0FE] border border-[#4471ED]/30 rounded-lg px-4 py-2 text-xs">
+          <div className="flex items-center justify-between bg-[#E8F0FE] border border-[#4471ED]/30 rounded-lg px-4 py-2.5 text-sm">
             <div className="flex items-center gap-2 text-[#1967D2] font-medium">
               <span>
                 Showing results
