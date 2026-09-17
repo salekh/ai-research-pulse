@@ -11,18 +11,18 @@ flowchart TD
   HydrateSQLite --> CheckSQLiteCount
 
   CheckSQLiteCount -- "Yes (Stale / Empty Container)" --> FetchGCS["restoreArticlesFromGCS()\nFetch gs://ai-research-pulse-assets/archive/articles-master.json"]
-  FetchGCS --> UpsertSQLite["Bulk Upsert 1,698 Articles\n(including 603 from 2026) into Local SQLite"]
+  FetchGCS --> UpsertSQLite["Bulk Upsert 2,229 Articles\n(including 805 from 2026) into Local SQLite"]
   UpsertSQLite --> ComparePG{"Is Postgres Online AND\nSQLite Count > PG Count?"}
 
   CheckSQLiteCount -- "No (SQLite Hydrated)" --> ComparePG
 
-  ComparePG -- "Yes (PG Missing 2026 Articles)" --> SyncPG["Batch Upsert (150 rows/chunk)\nfrom SQLite/GCS -> Cloud SQL Postgres\n(ON CONFLICT DO UPDATE)"]
+  ComparePG -- "Yes (PG Missing Articles)" --> SyncPG["Batch Upsert (150 rows/chunk)\nfrom SQLite/GCS -> Cloud SQL Postgres\n(ON CONFLICT DO UPDATE)"]
   SyncPG --> Ready(["3-Tier Engine Ready\n100% Synced Across GCS, Cloud SQL & SQLite"])
 
   ComparePG -- "No (PG Fully Synced)" --> Ready
 
   subgraph WritePath ["Continuous Ingestion & Non-Blocking Write Path"]
-    IngestTrigger(["Cloud Scheduler (0 */6 * * *)\nor Manual Refresh"]) --> FetchFeeds["Parallel RSS Fetch (7 AI Labs)\n+ filterTechnicalArticles()"]
+    IngestTrigger(["Cloud Scheduler (0 */6 * * *)\nor Manual Refresh"]) --> FetchFeeds["Parallel RSS + Boq RPC Fetch (8 AI Sources)\n+ filterTechnicalArticles()"]
     FetchFeeds --> SaveCall["saveArticles(technicalArticles)"]
     SaveCall --> WriteSQLite["1. Synchronous Upsert to Local SQLite"]
     WriteSQLite --> WritePG["2. Synchronous Batch Upsert to Cloud SQL Postgres"]

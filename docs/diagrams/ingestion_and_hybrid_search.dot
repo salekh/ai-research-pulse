@@ -35,10 +35,10 @@ digraph IngestionAndHybridSearch {
     fillcolor="#F8F9FA";
     color="#DADCE0";
 
-    rss_raw [label="1. Parallel RSS Aggregation\n7 Labs (1,504 Raw XML Items)", fillcolor="#FFFFFF"];
+    rss_raw [label="1. Parallel RSS + Boq RPC Aggregation\n8 Sources (2,270+ Raw Items · 2025+ Archive)", fillcolor="#FFFFFF"];
     dedup [label="2. URL Deduplication\nNormalised Link Canonicalization", fillcolor="#FFFFFF"];
     filter [
-      label="3. Pre-Storage Content Filter\nfilterTechnicalArticles()\n• Purges /team/, /policies/, PR noise\n• Retains 1,464 High-Signal Papers",
+      label="3. Pre-Storage Content Filter\nfilterTechnicalArticles()\n• Purges /team/, /policies/, PR noise\n• Retains 2,229 High-Signal Articles",
       fillcolor="#FEF7E0",
       color="#FBBC04"
     ];

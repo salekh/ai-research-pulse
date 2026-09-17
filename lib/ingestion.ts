@@ -69,6 +69,7 @@ export function extractTagsDeterministic(title: string, snippet: string): string
 export const FEEDS = [
   { url: 'https://research.google/blog/rss/', source: 'Google Research' },
   { url: 'https://deepmind.com/blog/feed/basic', source: 'Google DeepMind' },
+  { url: 'https://cloudblog.withgoogle.com/products/ai-machine-learning/rss/', source: 'Google Cloud AI' },
   { url: 'https://openai.com/news/rss.xml', source: 'OpenAI' },
   {
     url: 'https://blogs.technet.microsoft.com/machinelearning/feed',
@@ -91,6 +92,91 @@ export const FEEDS = [
     source: 'Anthropic',
   },
 ] as const;
+
+// ---------------------------------------------------------------------------
+// Google Cloud Blog Boq batchexecute (SQC9mf) Historical Crawler (2025+)
+// ---------------------------------------------------------------------------
+export async function fetchGoogleCloudBlogArchive(sinceYear = 2025): Promise<Article[]> {
+  const cutoff = new Date(`${sinceYear}-01-01T00:00:00Z`).getTime();
+  const allArticles = new Map<string, Article>();
+  let page = 1;
+  let keepGoing = true;
+  const rpcId = 'SQC9mf';
+
+  while (keepGoing && page <= 30) {
+    const batchPages = [page, page + 1, page + 2, page + 3, page + 4];
+    const results = await Promise.all(
+      batchPages.map(async (p) => {
+        try {
+          const args = [
+            'cloudblog',
+            'en',
+            null,
+            null,
+            50,
+            String(p),
+            'article',
+            ['ai-machine-learning'],
+            [],
+          ];
+          const reqPayload = [[[rpcId, JSON.stringify(args), null, 'generic']]];
+          const body = 'f.req=' + encodeURIComponent(JSON.stringify(reqPayload));
+          const res = await fetch(
+            `https://cloud.google.com/blog/_/TransformBlogUi/data/batchexecute?rpcids=${rpcId}`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                'User-Agent':
+                  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+              },
+              body,
+              signal: AbortSignal.timeout(15000),
+            }
+          );
+          if (!res.ok) return [];
+          const text = await res.text();
+          const lines = text.split('\n').filter((l) => l.trim().startsWith('['));
+          if (lines.length === 0) return [];
+          const outer = JSON.parse(lines[0]);
+          const data = JSON.parse(outer[0][2]);
+          return data[0] || [];
+        } catch {
+          return [];
+        }
+      })
+    );
+
+    for (const items of results) {
+      if (!items || items.length === 0) {
+        keepGoing = false;
+        break;
+      }
+      for (const item of items) {
+        const ts = item[8] && item[8][0] ? item[8][0] * 1000 : 0;
+        if (ts >= cutoff) {
+          const url = item[7];
+          const title = item[1];
+          const snippet = item[16] || item[2] || '';
+          if (url && title) {
+            allArticles.set(url, {
+              title: String(title).trim(),
+              link: String(url).trim(),
+              date: new Date(ts).toISOString(),
+              source: 'Google Cloud AI',
+              snippet: String(snippet).trim(),
+            });
+          }
+        } else {
+          keepGoing = false;
+        }
+      }
+    }
+    page += 5;
+  }
+
+  return Array.from(allArticles.values());
+}
 
 // ---------------------------------------------------------------------------
 // Main ingestion pipeline (with mutex & technical filtering)
@@ -117,6 +203,18 @@ export async function ingestAll(force = false): Promise<Article[]> {
       FEEDS.map((f) => fetchRSS(f.url, f.source as Article['source']))
     );
     const allArticles = rssResults.flat();
+
+    // 1b. Self-healing check: if fewer than 100 Google Cloud AI articles exist, backfill 2025+ archive
+    try {
+      const existingGCloud = await getArticles(200, undefined, 0, 'Google Cloud AI');
+      if (existingGCloud.length < 100) {
+        console.log('[ingestion] Fewer than 100 Google Cloud AI articles found — fetching 2025+ historical archive...');
+        const archiveArticles = await fetchGoogleCloudBlogArchive(2025);
+        allArticles.push(...archiveArticles);
+      }
+    } catch (e) {
+      console.warn('[ingestion] Historical Google Cloud AI check warning:', e);
+    }
 
     // 2. Deduplicate by normalised link
     const uniqueArticles = deduplicateArticles(allArticles);

@@ -36,6 +36,7 @@ interface Article {
   source:
     | 'Google Research'
     | 'Google DeepMind'
+    | 'Google Cloud AI'
     | 'OpenAI'
     | 'Anthropic'
     | 'Microsoft Research'
@@ -52,6 +53,7 @@ interface Article {
 const ALL_LABS = [
   'Google DeepMind',
   'Google Research',
+  'Google Cloud AI',
   'OpenAI',
   'Anthropic',
   'Meta AI',

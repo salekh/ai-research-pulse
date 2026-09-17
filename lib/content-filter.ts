@@ -31,11 +31,15 @@ export async function filterTechnicalArticles(articles: Article[]): Promise<Arti
 
   if (preFiltered.length === 0) return [];
 
-  const batchSize = 20;
-  const validArticles: Article[] = [];
+  // Preserve all Google Cloud AI blog posts directly per user specification
+  const directKeep = preFiltered.filter((a) => a.source === 'Google Cloud AI');
+  const toClassify = preFiltered.filter((a) => a.source !== 'Google Cloud AI');
 
-  for (let i = 0; i < preFiltered.length; i += batchSize) {
-    const batch = preFiltered.slice(i, i + batchSize);
+  const batchSize = 20;
+  const validArticles: Article[] = [...directKeep];
+
+  for (let i = 0; i < toClassify.length; i += batchSize) {
+    const batch = toClassify.slice(i, i + batchSize);
 
     const prompt = `You are the editorial filter for a technical AI research newsletter. Your audience is ML engineers and researchers — they want papers, methods, and technical insights, not business news.
 

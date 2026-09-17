@@ -12,6 +12,7 @@ export interface Article {
   source:
     | 'Google Research'
     | 'Google DeepMind'
+    | 'Google Cloud AI'
     | 'OpenAI'
     | 'Anthropic'
     | 'Microsoft Research'

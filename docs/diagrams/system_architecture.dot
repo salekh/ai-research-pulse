@@ -28,7 +28,7 @@ digraph SystemArchitecture {
   ];
 
   subgraph cluster_sources {
-    label="7 Frontier AI Research Labs (RSS / Atom)";
+    label="8 Frontier AI Research & Cloud Sources (RSS + Boq RPC)";
     fontname="Google Sans";
     fontsize=12;
     fontcolor="#202124";
@@ -37,6 +37,7 @@ digraph SystemArchitecture {
     color="#DADCE0";
 
     lab_google [label="Google Research\n& Google DeepMind", fillcolor="#E8F0FE", color="#4285F4"];
+    lab_gcloud [label="Google Cloud AI\n(RSS + SQC9mf 2025+ Archive)", fillcolor="#E8F0FE", color="#FBBC04"];
     lab_openai [label="OpenAI\nResearch News", fillcolor="#FFFFFF"];
     lab_anthropic [label="Anthropic\nResearch & Alignment", fillcolor="#FFFFFF"];
     lab_others [label="Meta AI · Microsoft\nResearch · x.AI", fillcolor="#FFFFFF"];
@@ -126,7 +127,7 @@ digraph SystemArchitecture {
   }
 
   subgraph cluster_storage {
-    label="3-Tier Zero-Loss Persistence & Self-Healing Archival Layer (1,698 Articles · 603 from 2026)";
+    label="3-Tier Zero-Loss Persistence & Self-Healing Archival Layer (2,229 Articles · 805 from 2026)";
     fontname="Google Sans";
     fontsize=12;
     fontcolor="#202124";
@@ -157,6 +158,7 @@ digraph SystemArchitecture {
   // Connections
   cron_job -> api_ingest [label="HTTP POST (6h)", color="#EA4335", penwidth=1.5];
   lab_google -> api_ingest [label="RSS XML"];
+  lab_gcloud -> api_ingest [label="RSS + Boq RPC"];
   lab_openai -> api_ingest [label="RSS XML"];
   lab_anthropic -> api_ingest [label="RSS XML"];
   lab_others -> api_ingest [label="RSS XML"];
@@ -181,5 +183,5 @@ digraph SystemArchitecture {
   api_news -> tier2_sqlite [label="Fallback Search", style="dashed"];
 
   tier3_gcs -> tier2_sqlite [label="Cold-Start Hydrate", color="#1967D2", penwidth=1.5];
-  tier2_sqlite -> tier1_pg [label="Cross-Sync (1,698 rows)", color="#1967D2", penwidth=1.5];
+  tier2_sqlite -> tier1_pg [label="Cross-Sync (2,229 rows)", color="#1967D2", penwidth=1.5];
 }

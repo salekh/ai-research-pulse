@@ -12,15 +12,16 @@
 
 ## 1. Executive Overview
 
-**AI Research Pulse** continuously aggregates, filters, embeds, synthesizes, and vocalizes technical publications across **7 frontier AI research laboratories**:
+**AI Research Pulse** continuously aggregates, filters, embeds, synthesizes, and vocalizes technical publications across **8 frontier AI research laboratories & cloud engineering teams**:
 - **Google Research** & **Google DeepMind**
+- **Google Cloud AI** (*AI & Machine Learning Blog — live RSS + full historical archive from 2025 onwards via Boq RPC `SQC9mf`*)
 - **OpenAI**
 - **Anthropic**
 - **Meta AI (FAIR)**
 - **Microsoft Research**
 - **x.AI**
 
-The `v2.0.0-fde-pulse` release represents a comprehensive architectural overhaul over the legacy implementation (preserved at tag [`v1.0.0-legacy`](https://github.com/sanchitalekh/ai-research-pulse/tree/v1.0.0-legacy)), replacing serial $O(N)$ N+1 API bottlenecks, ephemeral single-point database failure modes, and generic UI styling with a resilient, zero-loss, production-grade Google Cloud architecture.
+The `v2.0.0-fde-pulse` release represents a comprehensive architectural overhaul over the legacy implementation (preserved at tag [`v1.0.0-legacy`](https://github.com/sanchitalekh/ai-research-pulse/tree/v1.0.0-legacy)), replacing serial $O(N)$ N+1 API bottlenecks, ephemeral single-point database failure modes, and generic UI styling with a resilient, zero-loss, production-grade Google Cloud architecture indexing **2,229 technical publications** (**805 from 2026**, **531 from Google Cloud AI**).
 
 ---
 
@@ -262,7 +263,7 @@ To solve all three failure modes simultaneously while keeping GCP costs near zer
 #### Key Mechanisms:
 - **Automatic Schema Migration ([`isPostgresAvailable()`](./lib/db.ts))**: Executes idempotent `ALTER TABLE articles ADD COLUMN IF NOT EXISTS summary TEXT, key_innovation TEXT, significance TEXT;` on connection initialization.
 - **Singleton Pool Guard**: Attaches `globalThis.__pgPool` with `max: 5` connections and `idleTimeoutMillis: 30000`.
-- **11-Nines Durable GCS Master Archive ([`backupArticlesToGCS()`](./lib/gcs-archive.ts))**: Every ingestion write asynchronously mirrors the complete 1,698-article corpus (including **603 articles from 2026** and all 768-dimensional embeddings) to `gs://ai-research-pulse-assets/archive/articles-master.json` and `gs://ai-research-pulse-assets/archive/news.db`.
+- **11-Nines Durable GCS Master Archive ([`backupArticlesToGCS()`](./lib/gcs-archive.ts))**: Every ingestion write asynchronously mirrors the complete 2,229-article corpus (including **805 articles from 2026**, **531 Google Cloud AI articles from 2025–2026**, and all 768-dimensional embeddings) to `gs://ai-research-pulse-assets/archive/articles-master.json` and `gs://ai-research-pulse-assets/archive/news.db`.
 - **Bidirectional Cold-Start Hydration ([`ensureDatabaseHydrated()`](./lib/db.ts))**: On cold start, if local SQLite (`data/news.db`) or Cloud SQL PostgreSQL has fewer records than the GCS Master Archive, the engine automatically restores and batch-upserts all missing records across all three tiers.
 
 <details>
@@ -282,18 +283,18 @@ flowchart TD
   HydrateSQLite --> CheckSQLiteCount
 
   CheckSQLiteCount -- "Yes (Stale / Empty Container)" --> FetchGCS["restoreArticlesFromGCS()\nFetch gs://ai-research-pulse-assets/archive/articles-master.json"]
-  FetchGCS --> UpsertSQLite["Bulk Upsert 1,698 Articles\n(including 603 from 2026) into Local SQLite"]
+  FetchGCS --> UpsertSQLite["Bulk Upsert 2,229 Articles\n(including 805 from 2026) into Local SQLite"]
   UpsertSQLite --> ComparePG{"Is Postgres Online AND\nSQLite Count > PG Count?"}
 
   CheckSQLiteCount -- "No (SQLite Hydrated)" --> ComparePG
 
-  ComparePG -- "Yes (PG Missing 2026 Articles)" --> SyncPG["Batch Upsert (150 rows/chunk)\nfrom SQLite/GCS -> Cloud SQL Postgres\n(ON CONFLICT DO UPDATE)"]
+  ComparePG -- "Yes (PG Missing Articles)" --> SyncPG["Batch Upsert (150 rows/chunk)\nfrom SQLite/GCS -> Cloud SQL Postgres\n(ON CONFLICT DO UPDATE)"]
   SyncPG --> Ready(["3-Tier Engine Ready\n100% Synced Across GCS, Cloud SQL & SQLite"])
 
   ComparePG -- "No (PG Fully Synced)" --> Ready
 
   subgraph WritePath ["Continuous Ingestion & Non-Blocking Write Path"]
-    IngestTrigger(["Cloud Scheduler (0 */6 * * *)\nor Manual Refresh"]) --> FetchFeeds["Parallel RSS Fetch (7 AI Labs)\n+ filterTechnicalArticles()"]
+    IngestTrigger(["Cloud Scheduler (0 */6 * * *)\nor Manual Refresh"]) --> FetchFeeds["Parallel RSS + Boq RPC Fetch (8 AI Sources)\n+ filterTechnicalArticles()"]
     FetchFeeds --> SaveCall["saveArticles(technicalArticles)"]
     SaveCall --> WriteSQLite["1. Synchronous Upsert to Local SQLite"]
     WriteSQLite --> WritePG["2. Synchronous Batch Upsert to Cloud SQL Postgres"]

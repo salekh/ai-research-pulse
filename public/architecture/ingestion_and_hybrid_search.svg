@@ -22,37 +22,37 @@
 <!-- rss_raw -->
 <g id="node1" class="node">
 <title>rss_raw</title>
-<path fill="#ffffff" stroke="#dadce0" stroke-width="1.2" d="M344.58,-807.99C344.58,-807.99 193.42,-807.99 193.42,-807.99 187.42,-807.99 181.42,-801.99 181.42,-795.99 181.42,-795.99 181.42,-772.71 181.42,-772.71 181.42,-766.71 187.42,-760.71 193.42,-760.71 193.42,-760.71 344.58,-760.71 344.58,-760.71 350.58,-760.71 356.58,-766.71 356.58,-772.71 356.58,-772.71 356.58,-795.99 356.58,-795.99 356.58,-801.99 350.58,-807.99 344.58,-807.99"/>
-<text xml:space="preserve" text-anchor="middle" x="269" y="-788.9" font-family="Google Sans Text" font-size="11.00" fill="#202124">1. Parallel RSS Aggregation</text>
-<text xml:space="preserve" text-anchor="middle" x="269" y="-773.9" font-family="Google Sans Text" font-size="11.00" fill="#202124">7 Labs (1,504 Raw XML Items)</text>
+<path fill="#ffffff" stroke="#dadce0" stroke-width="1.2" d="M389.58,-807.99C389.58,-807.99 160.42,-807.99 160.42,-807.99 154.42,-807.99 148.42,-801.99 148.42,-795.99 148.42,-795.99 148.42,-772.71 148.42,-772.71 148.42,-766.71 154.42,-760.71 160.42,-760.71 160.42,-760.71 389.58,-760.71 389.58,-760.71 395.58,-760.71 401.58,-766.71 401.58,-772.71 401.58,-772.71 401.58,-795.99 401.58,-795.99 401.58,-801.99 395.58,-807.99 389.58,-807.99"/>
+<text xml:space="preserve" text-anchor="middle" x="275" y="-788.9" font-family="Google Sans Text" font-size="11.00" fill="#202124">1. Parallel RSS + Boq RPC Aggregation</text>
+<text xml:space="preserve" text-anchor="middle" x="275" y="-773.9" font-family="Google Sans Text" font-size="11.00" fill="#202124">8 Sources (2,270+ Raw Items · 2025+ Archive)</text>
 </g>
 <!-- dedup -->
 <g id="node2" class="node">
 <title>dedup</title>
-<path fill="#ffffff" stroke="#dadce0" stroke-width="1.2" d="M350.96,-711.71C350.96,-711.71 187.04,-711.71 187.04,-711.71 181.04,-711.71 175.04,-705.71 175.04,-699.71 175.04,-699.71 175.04,-676.43 175.04,-676.43 175.04,-670.43 181.04,-664.43 187.04,-664.43 187.04,-664.43 350.96,-664.43 350.96,-664.43 356.96,-664.43 362.96,-670.43 362.96,-676.43 362.96,-676.43 362.96,-699.71 362.96,-699.71 362.96,-705.71 356.96,-711.71 350.96,-711.71"/>
-<text xml:space="preserve" text-anchor="middle" x="269" y="-692.62" font-family="Google Sans Text" font-size="11.00" fill="#202124">2. URL Deduplication</text>
-<text xml:space="preserve" text-anchor="middle" x="269" y="-677.62" font-family="Google Sans Text" font-size="11.00" fill="#202124">Normalised Link Canonicalization</text>
+<path fill="#ffffff" stroke="#dadce0" stroke-width="1.2" d="M356.96,-711.71C356.96,-711.71 193.04,-711.71 193.04,-711.71 187.04,-711.71 181.04,-705.71 181.04,-699.71 181.04,-699.71 181.04,-676.43 181.04,-676.43 181.04,-670.43 187.04,-664.43 193.04,-664.43 193.04,-664.43 356.96,-664.43 356.96,-664.43 362.96,-664.43 368.96,-670.43 368.96,-676.43 368.96,-676.43 368.96,-699.71 368.96,-699.71 368.96,-705.71 362.96,-711.71 356.96,-711.71"/>
+<text xml:space="preserve" text-anchor="middle" x="275" y="-692.62" font-family="Google Sans Text" font-size="11.00" fill="#202124">2. URL Deduplication</text>
+<text xml:space="preserve" text-anchor="middle" x="275" y="-677.62" font-family="Google Sans Text" font-size="11.00" fill="#202124">Normalised Link Canonicalization</text>
 </g>
 <!-- rss_raw&#45;&gt;dedup -->
 <g id="edge1" class="edge">
 <title>rss_raw&#45;&gt;dedup</title>
-<path fill="none" stroke="#5f6368" stroke-width="1.3" d="M269,-760.55C269,-760.55 269,-721.23 269,-721.23"/>
-<polygon fill="#5f6368" stroke="#5f6368" stroke-width="1.3" points="271.45,-721.23 269,-714.23 266.55,-721.23 271.45,-721.23"/>
+<path fill="none" stroke="#5f6368" stroke-width="1.3" d="M275,-760.55C275,-760.55 275,-721.23 275,-721.23"/>
+<polygon fill="#5f6368" stroke="#5f6368" stroke-width="1.3" points="277.45,-721.23 275,-714.23 272.55,-721.23 277.45,-721.23"/>
 </g>
 <!-- filter -->
 <g id="node3" class="node">
 <title>filter</title>
-<path fill="#fef7e0" stroke="#fbbc04" stroke-width="1.2" d="M357.33,-615.43C357.33,-615.43 180.67,-615.43 180.67,-615.43 174.67,-615.43 168.67,-609.43 168.67,-603.43 168.67,-603.43 168.67,-550.15 168.67,-550.15 168.67,-544.15 174.67,-538.15 180.67,-538.15 180.67,-538.15 357.33,-538.15 357.33,-538.15 363.33,-538.15 369.33,-544.15 369.33,-550.15 369.33,-550.15 369.33,-603.43 369.33,-603.43 369.33,-609.43 363.33,-615.43 357.33,-615.43"/>
-<text xml:space="preserve" text-anchor="middle" x="269" y="-596.34" font-family="Google Sans Text" font-size="11.00" fill="#202124">3. Pre&#45;Storage Content Filter</text>
-<text xml:space="preserve" text-anchor="middle" x="269" y="-581.34" font-family="Google Sans Text" font-size="11.00" fill="#202124">filterTechnicalArticles()</text>
-<text xml:space="preserve" text-anchor="middle" x="269" y="-566.34" font-family="Google Sans Text" font-size="11.00" fill="#202124">• Purges /team/, /policies/, PR noise</text>
-<text xml:space="preserve" text-anchor="middle" x="269" y="-551.34" font-family="Google Sans Text" font-size="11.00" fill="#202124">• Retains 1,464 High&#45;Signal Papers</text>
+<path fill="#fef7e0" stroke="#fbbc04" stroke-width="1.2" d="M363.33,-615.43C363.33,-615.43 186.67,-615.43 186.67,-615.43 180.67,-615.43 174.67,-609.43 174.67,-603.43 174.67,-603.43 174.67,-550.15 174.67,-550.15 174.67,-544.15 180.67,-538.15 186.67,-538.15 186.67,-538.15 363.33,-538.15 363.33,-538.15 369.33,-538.15 375.33,-544.15 375.33,-550.15 375.33,-550.15 375.33,-603.43 375.33,-603.43 375.33,-609.43 369.33,-615.43 363.33,-615.43"/>
+<text xml:space="preserve" text-anchor="middle" x="275" y="-596.34" font-family="Google Sans Text" font-size="11.00" fill="#202124">3. Pre&#45;Storage Content Filter</text>
+<text xml:space="preserve" text-anchor="middle" x="275" y="-581.34" font-family="Google Sans Text" font-size="11.00" fill="#202124">filterTechnicalArticles()</text>
+<text xml:space="preserve" text-anchor="middle" x="275" y="-566.34" font-family="Google Sans Text" font-size="11.00" fill="#202124">• Purges /team/, /policies/, PR noise</text>
+<text xml:space="preserve" text-anchor="middle" x="275" y="-551.34" font-family="Google Sans Text" font-size="11.00" fill="#202124">• Retains 2,229 High&#45;Signal Articles</text>
 </g>
 <!-- dedup&#45;&gt;filter -->
 <g id="edge2" class="edge">
 <title>dedup&#45;&gt;filter</title>
-<path fill="none" stroke="#5f6368" stroke-width="1.3" d="M269,-663.92C269,-663.92 269,-624.73 269,-624.73"/>
-<polygon fill="#5f6368" stroke="#5f6368" stroke-width="1.3" points="271.45,-624.73 269,-617.73 266.55,-624.73 271.45,-624.73"/>
+<path fill="none" stroke="#5f6368" stroke-width="1.3" d="M275,-663.92C275,-663.92 275,-624.73 275,-624.73"/>
+<polygon fill="#5f6368" stroke="#5f6368" stroke-width="1.3" points="277.45,-624.73 275,-617.73 272.55,-624.73 277.45,-624.73"/>
 </g>
 <!-- batch_tags -->
 <g id="node4" class="node">
@@ -66,8 +66,8 @@
 <!-- filter&#45;&gt;batch_tags -->
 <g id="edge3" class="edge">
 <title>filter&#45;&gt;batch_tags</title>
-<path fill="none" stroke="#5f6368" stroke-width="1.3" d="M207.5,-537.64C207.5,-537.64 207.5,-497.97 207.5,-497.97"/>
-<polygon fill="#5f6368" stroke="#5f6368" stroke-width="1.3" points="209.95,-497.97 207.5,-490.97 205.05,-497.97 209.95,-497.97"/>
+<path fill="none" stroke="#5f6368" stroke-width="1.3" d="M210.5,-537.64C210.5,-537.64 210.5,-497.97 210.5,-497.97"/>
+<polygon fill="#5f6368" stroke="#5f6368" stroke-width="1.3" points="212.95,-497.97 210.5,-490.97 208.05,-497.97 212.95,-497.97"/>
 </g>
 <!-- batch_embed -->
 <g id="node5" class="node">
@@ -81,8 +81,8 @@
 <!-- filter&#45;&gt;batch_embed -->
 <g id="edge4" class="edge">
 <title>filter&#45;&gt;batch_embed</title>
-<path fill="none" stroke="#5f6368" stroke-width="1.3" d="M322.19,-537.64C322.19,-537.64 322.19,-497.97 322.19,-497.97"/>
-<polygon fill="#5f6368" stroke="#5f6368" stroke-width="1.3" points="324.64,-497.97 322.19,-490.97 319.74,-497.97 324.64,-497.97"/>
+<path fill="none" stroke="#5f6368" stroke-width="1.3" d="M325.19,-537.64C325.19,-537.64 325.19,-497.97 325.19,-497.97"/>
+<polygon fill="#5f6368" stroke="#5f6368" stroke-width="1.3" points="327.64,-497.97 325.19,-490.97 322.74,-497.97 327.64,-497.97"/>
 </g>
 <!-- upsert_all -->
 <g id="node6" class="node">

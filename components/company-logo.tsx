@@ -1,12 +1,22 @@
 import React from 'react';
 
 interface CompanyLogoProps {
-  company: 'Google Research' | 'Google DeepMind' | 'OpenAI' | 'Anthropic' | 'Microsoft Research' | 'Meta AI' | 'x.AI';
+  company: 'Google Research' | 'Google DeepMind' | 'Google Cloud AI' | 'OpenAI' | 'Anthropic' | 'Microsoft Research' | 'Meta AI' | 'x.AI';
   className?: string;
 }
 
 export function CompanyLogo({ company, className = "w-5 h-5" }: CompanyLogoProps) {
   switch (company) {
+    case 'Google Cloud AI':
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" fill="#4285F4" fillOpacity="0.18"/>
+          <path d="M12 6a6 6 0 0 1 5.91 5H19a3 3 0 0 1 3 3 3 3 0 0 1-3 3H6a4 4 0 0 1-4-4 4 4 0 0 1 3.7-3.98A6.002 6.002 0 0 1 12 6m0-2C9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96C18.67 6.59 15.64 4 12 4z" fill="#4285F4"/>
+          <circle cx="8.5" cy="13.5" r="1.5" fill="#EA4335"/>
+          <circle cx="12" cy="11.5" r="1.5" fill="#FBBC05"/>
+          <circle cx="15.5" cy="13.5" r="1.5" fill="#34A853"/>
+        </svg>
+      );
     case 'Google Research':
       return (
         <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

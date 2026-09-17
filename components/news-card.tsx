@@ -23,6 +23,7 @@ interface Article {
   source:
     | 'Google Research'
     | 'Google DeepMind'
+    | 'Google Cloud AI'
     | 'OpenAI'
     | 'Anthropic'
     | 'Microsoft Research'
@@ -45,6 +46,7 @@ interface NewsCardProps {
 const SOURCE_ACCENTS: Record<string, { from: string; to: string }> = {
   'Google Research': { from: '#4285F4', to: '#34A853' },
   'Google DeepMind': { from: '#4471ED', to: '#4285F4' },
+  'Google Cloud AI': { from: '#4285F4', to: '#FBBC05' },
   OpenAI: { from: '#10a37f', to: '#0764FF' },
   Anthropic: { from: '#EC4032', to: '#FF9302' },
   'Microsoft Research': { from: '#0764FF', to: '#42AB42' },
