@@ -17,7 +17,8 @@ export interface Article {
     | 'Anthropic'
     | 'Microsoft Research'
     | 'Meta AI'
-    | 'x.AI';
+    | 'x.AI'
+    | 'Chinese Frontier';
   snippet: string;
   tags?: string[];
   embedding?: number[];

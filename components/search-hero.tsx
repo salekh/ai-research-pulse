@@ -18,7 +18,7 @@ export function SearchHero({ onSearch, onShowFeed }: SearchHeroProps) {
   const [mounted, setMounted] = useState(false);
 
   const placeholders = [
-    'Search across Google DeepMind, Google Cloud AI, OpenAI, Anthropic, Meta, Microsoft, x.AI…',
+    'Search across DeepMind, Google Cloud AI, OpenAI, Anthropic, Chinese Frontier (DeepSeek/Qwen/Kimi/GLM)…',
     'Ask about test-time compute, RLHF, or agentic harnesses…',
     'Find breakthroughs in mechanistic interpretability & safety…',
     'Explore multimodal video world models and scientific benchmarks…',
@@ -98,7 +98,7 @@ export function SearchHero({ onSearch, onShowFeed }: SearchHeroProps) {
           </h1>
           <p className="text-lg md:text-xl text-[#BABBBC] max-w-2xl mx-auto font-normal leading-relaxed">
             Real-time technical publication synthesis, cross-lab convergence matrices, and recursive
-            self-improving intelligence across 8 frontier AI laboratories &amp; cloud research teams.
+            self-improving intelligence across 9 frontier AI laboratories &amp; research ecosystems.
           </p>
         </div>
 
@@ -215,10 +215,10 @@ export function SearchHero({ onSearch, onShowFeed }: SearchHeroProps) {
         <div className="max-w-7xl mx-auto px-6 py-5 grid grid-cols-2 md:grid-cols-4 gap-6">
           <div>
             <div className="text-2xl md:text-3xl font-bold text-[#4471ED] font-display tabular-nums">
-              2,229
+              2,482
             </div>
             <div className="text-sm text-[#BABBBC] mt-0.5">
-              Technical Papers Indexed (805 from 2026)
+              Technical Papers Indexed (888 from 2026)
             </div>
           </div>
           <div>

@@ -41,6 +41,7 @@ const ALL_LABS = [
   'Meta AI',
   'Microsoft Research',
   'x.AI',
+  'Chinese Frontier',
 ] as const;
 
 export function ArticleSelector({ onGenerate, isGenerating }: ArticleSelectorProps) {

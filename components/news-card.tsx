@@ -28,7 +28,8 @@ interface Article {
     | 'Anthropic'
     | 'Microsoft Research'
     | 'Meta AI'
-    | 'x.AI';
+    | 'x.AI'
+    | 'Chinese Frontier';
   snippet: string;
   tags?: string[];
   score?: number;
@@ -52,6 +53,7 @@ const SOURCE_ACCENTS: Record<string, { from: string; to: string }> = {
   'Microsoft Research': { from: '#0764FF', to: '#42AB42' },
   'Meta AI': { from: '#0668E1', to: '#4471ED' },
   'x.AI': { from: '#202124', to: '#5F6368' },
+  'Chinese Frontier': { from: '#DE2910', to: '#FFDE00' },
 };
 
 export function NewsCard({ article, onSave, isSaved = false }: NewsCardProps) {

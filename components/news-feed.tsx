@@ -41,7 +41,8 @@ interface Article {
     | 'Anthropic'
     | 'Microsoft Research'
     | 'Meta AI'
-    | 'x.AI';
+    | 'x.AI'
+    | 'Chinese Frontier';
   snippet: string;
   tags?: string[];
   score?: number;
@@ -59,6 +60,7 @@ const ALL_LABS = [
   'Meta AI',
   'Microsoft Research',
   'x.AI',
+  'Chinese Frontier',
 ] as const;
 
 export function NewsFeed({

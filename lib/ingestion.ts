@@ -91,6 +91,14 @@ export const FEEDS = [
     url: 'https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic_red.xml',
     source: 'Anthropic',
   },
+  {
+    url: 'https://qwenlm.github.io/blog/index.xml',
+    source: 'Chinese Frontier',
+  },
+  {
+    url: 'https://export.arxiv.org/api/query?search_query=ti:DeepSeek+OR+ti:Qwen+OR+ti:Kimi+OR+ti:GLM-4+OR+ti:CogVideoX&sortBy=submittedDate&sortOrder=descending&max_results=30',
+    source: 'Chinese Frontier',
+  },
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -269,9 +277,30 @@ async function fetchRSS(url: string, source: Article['source']): Promise<Article
         }
 
         const snippet = (item.contentSnippet || item.content || '').replace(/<[^>]*>?/gm, '').trim();
+        let subLabTag: string | null = null;
+        if (source === 'Chinese Frontier') {
+          title = title.replace(/\s+/g, ' ').trim();
+          const combined = `${title} ${snippet}`;
+          if (/\b(deepseek|janus-pro|janusflow|native sparse attention|dualpipe|flashmla)\b/i.test(combined)) {
+            subLabTag = 'DeepSeek';
+          } else if (/\b(qwen|qwq|tongyi)\b/i.test(combined) || link.includes('qwenlm.github.io')) {
+            subLabTag = 'Qwen';
+          } else if (/\b(kimi|moonshot|mooncake|moonlight)\b/i.test(combined)) {
+            subLabTag = 'Kimi';
+          } else if (/\b(glm|chatglm|cogvideox|cogview|autoglm|zhipu|thudm)\b/i.test(combined)) {
+            subLabTag = 'GLM';
+          }
+          if (subLabTag && !title.startsWith(`[${subLabTag}]`)) {
+            title = `[${subLabTag}] ${title}`;
+          }
+        }
+
         const rawCategories = item.categories
           ? item.categories.filter((c) => typeof c === 'string' && c.length < 25).slice(0, 3)
           : [];
+        const baseTags =
+          rawCategories.length > 0 ? rawCategories : extractTagsDeterministic(title, snippet);
+        const finalTags = subLabTag ? [subLabTag, ...baseTags.filter((t) => t !== subLabTag)] : baseTags;
 
         const article: Article = {
           title,
@@ -281,10 +310,7 @@ async function fetchRSS(url: string, source: Article['source']): Promise<Article
             (item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString()),
           source,
           snippet,
-          tags:
-            rawCategories.length > 0
-              ? rawCategories
-              : extractTagsDeterministic(title, snippet),
+          tags: finalTags,
         };
         return article;
       })

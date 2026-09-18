@@ -1,12 +1,20 @@
 import React from 'react';
 
 interface CompanyLogoProps {
-  company: 'Google Research' | 'Google DeepMind' | 'Google Cloud AI' | 'OpenAI' | 'Anthropic' | 'Microsoft Research' | 'Meta AI' | 'x.AI';
+  company: 'Google Research' | 'Google DeepMind' | 'Google Cloud AI' | 'OpenAI' | 'Anthropic' | 'Microsoft Research' | 'Meta AI' | 'x.AI' | 'Chinese Frontier';
   className?: string;
 }
 
 export function CompanyLogo({ company, className = "w-5 h-5" }: CompanyLogoProps) {
   switch (company) {
+    case 'Chinese Frontier':
+      return (
+        <img
+          src="/assets/chinese-frontier.svg"
+          alt="Chinese Frontier"
+          className={`${className} rounded-[2px] object-cover`}
+        />
+      );
     case 'Google Cloud AI':
       return (
         <img src="/assets/google-cloud-2026.svg" alt="Google Cloud AI" className={className} />
