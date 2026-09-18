@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   const sourceFilter = searchParams.get('source') || undefined;
   const page = parseInt(searchParams.get('page') || '1', 10);
   const rawLimit = parseInt(searchParams.get('limit') || '30', 10);
-  const limit = Math.min(Math.max(rawLimit, 1), 100);
+  const limit = Math.min(Math.max(rawLimit, 1), 5000);
   const offset = (page - 1) * limit;
 
   try {
