@@ -31,9 +31,17 @@ export async function filterTechnicalArticles(articles: Article[]): Promise<Arti
 
   if (preFiltered.length === 0) return [];
 
-  // Preserve all Google Cloud AI blog posts directly per user specification
-  const directKeep = preFiltered.filter((a) => a.source === 'Google Cloud AI');
-  const toClassify = preFiltered.filter((a) => a.source !== 'Google Cloud AI');
+  // Preserve all Google Cloud AI blog posts and first-party research.meta.ai / Meta frontier model posts directly
+  const isDirectKeep = (a: Article) =>
+    a.source === 'Google Cloud AI' ||
+    a.link.includes('research.meta.ai') ||
+    (a.source === 'Meta AI' &&
+      /\b(muse|sam\b|segment anything|dino|dinov2|dinov3|v-jepa|jepa|tribe|brain2qwerty|llama 4|omnilingual|executorch|aria gen 2)\b/i.test(
+        `${a.title} ${a.link}`
+      ));
+
+  const directKeep = preFiltered.filter(isDirectKeep);
+  const toClassify = preFiltered.filter((a) => !isDirectKeep(a));
 
   const batchSize = 20;
   const validArticles: Article[] = [...directKeep];

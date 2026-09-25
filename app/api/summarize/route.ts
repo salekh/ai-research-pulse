@@ -35,12 +35,15 @@ export async function POST(request: Request) {
           const html = await res.text();
           const $ = cheerio.load(html);
           $(
-            'script, style, nav, footer, header, aside, .nav, .footer, .header, .menu, .sidebar, .comments, .related'
+            'script, style, nav, footer, header, aside, .nav, .footer, .header, .menu, .sidebar, .comments, .related, [class*="transcriber"], [class*="Consent"]'
           ).remove();
           const mainText = $(
-            'main, article, .content, .post-content, .blog-post, .entry-content'
-          ).text();
+            '[class*="max-w-article"], main, article, .content, .post-content, .blog-post, .entry-content'
+          )
+            .first()
+            .text();
           content = (mainText || $('body').text())
+            .replace(/\u00a0/g, ' ')
             .replace(/\s+/g, ' ')
             .trim()
             .slice(0, 8000);

@@ -1,4 +1,5 @@
 import Parser from 'rss-parser';
+import * as cheerio from 'cheerio';
 import { saveArticles, getArticles, Article } from '@/lib/db';
 import { getEmbeddingsBatch, generateContentWithFallback } from '@/lib/vertex';
 import { filterTechnicalArticles } from '@/lib/content-filter';
@@ -36,19 +37,21 @@ export const TAG_TAXONOMY = [
 ] as const;
 
 const DETERMINISTIC_TAXONOMY_RULES: Array<{ tag: string; regex: RegExp }> = [
-  { tag: 'LLM', regex: /\b(llm|language model|gpt|claude|gemini|transformer|llama|token)\b/i },
-  { tag: 'Reasoning', regex: /\b(reason|chain of thought|math|o1|o3|thinking|step-by-step|logic)\b/i },
-  { tag: 'Multimodal', regex: /\b(multimodal|vision-language|audio|speech|voice|image-to-text)\b/i },
-  { tag: 'Video', regex: /\b(sora|video|veo|cinematic|motion)\b/i },
-  { tag: 'Vision', regex: /\b(vision|image|diffusion|pixel|segmentation|detection|3d)\b/i },
-  { tag: 'Agents', regex: /\b(agent|agentic|tool use|computer use|browser|workflow|autonomous)\b/i },
+  { tag: 'LLM', regex: /\b(llm|language model|gpt|claude|gemini|transformer|llama|muse|token)\b/i },
+  { tag: 'Reasoning', regex: /\b(reason|reasoning|chain of thought|math|o1|o3|thinking|step-by-step|logic|muse spark)\b/i },
+  { tag: 'Multimodal', regex: /\b(multimodal|vision-language|audio|speech|voice|image-to-text|transcribe|avatar|seamless|omni)\b/i },
+  { tag: 'Audio', regex: /\b(audio|speech|voice|transcribe|asr|diarization|endpointing)\b/i },
+  { tag: 'Video', regex: /\b(sora|video|veo|cinematic|motion|muse video|avatar)\b/i },
+  { tag: 'Vision', regex: /\b(vision|image|diffusion|pixel|segmentation|segment anything|sam|dino|dinov2|dinov3|detection|3d|canopy)\b/i },
+  { tag: 'World Models', regex: /\b(world model|v-jepa|jepa|physical reasoning|assetgen|3d world)\b/i },
+  { tag: 'Agents', regex: /\b(agent|agentic|tool use|computer use|browser|workflow|autonomous|muse glimmer|muse code|subagent)\b/i },
   { tag: 'RL', regex: /\b(reinforcement learning|rlhf|reward|policy gradient|ppo|dpo)\b/i },
-  { tag: 'Safety', regex: /\b(safety|alignment|jailbreak|red team|constitutional|guardrail|hallucination|robustness)\b/i },
+  { tag: 'Safety', regex: /\b(safety|alignment|jailbreak|red team|constitutional|guardrail|hallucination|robustness|cyber|vulnerability|security)\b/i },
   { tag: 'Interpretability', regex: /\b(interpretability|mechanistic|feature|circuit|attention head|sparse autoencoder)\b/i },
-  { tag: 'Efficiency', regex: /\b(efficiency|quantization|distillation|pruning|flashattention|inference|latency|throughput)\b/i },
-  { tag: 'Code', regex: /\b(code|coding|programming|software engineer|swe-bench|copilot|compiler)\b/i },
-  { tag: 'Science', regex: /\b(protein|alphafold|genom|chemistry|molecule|physics|weather|climate|medical|healthcare)\b/i },
-  { tag: 'Robotics', regex: /\b(robot|embodied|manipulation|locomotion|humanoid)\b/i },
+  { tag: 'Efficiency', regex: /\b(efficiency|quantization|distillation|pruning|flashattention|inference|latency|throughput|executorch|on-device|rcclx|parallelism|kernel)\b/i },
+  { tag: 'Code', regex: /\b(code|coding|programming|software engineer|swe-bench|copilot|compiler|muse code)\b/i },
+  { tag: 'Science', regex: /\b(protein|alphafold|genom|chemistry|molecule|molecular|physics|weather|climate|medical|healthcare|brain|neuroscience|tribe|brain2qwerty|oncology|pathology|forest)\b/i },
+  { tag: 'Robotics', regex: /\b(robot|robotics|embodied|manipulation|locomotion|humanoid|egomimic|aria)\b/i },
   { tag: 'Evaluation', regex: /\b(benchmark|evaluation|eval|leaderboard|indqa|mmlu)\b/i },
   { tag: 'Training', regex: /\b(pre-training|fine-tuning|post-training|dataset|synthetic data|scaling law)\b/i },
 ];
@@ -71,6 +74,18 @@ export const FEEDS = [
   { url: 'https://deepmind.com/blog/feed/basic', source: 'Google DeepMind' },
   { url: 'https://cloudblog.withgoogle.com/products/ai-machine-learning/rss/', source: 'Google Cloud AI' },
   { url: 'https://openai.com/news/rss.xml', source: 'OpenAI' },
+  {
+    url: 'https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_meta_ai.xml',
+    source: 'Meta AI',
+  },
+  {
+    url: 'https://engineering.fb.com/category/ai-research/feed/',
+    source: 'Meta AI',
+  },
+  {
+    url: 'https://engineering.fb.com/category/ml-applications/feed/',
+    source: 'Meta AI',
+  },
   {
     url: 'https://blogs.technet.microsoft.com/machinelearning/feed',
     source: 'Microsoft Research',
@@ -100,6 +115,170 @@ export const FEEDS = [
     source: 'Chinese Frontier',
   },
 ] as const;
+
+// ---------------------------------------------------------------------------
+// Meta AI Research Portal Crawler (https://research.meta.ai/)
+// Crawls home + /blog + /sitemap.xml and enriches each article page
+// ---------------------------------------------------------------------------
+export async function fetchMetaResearchPortal(): Promise<Article[]> {
+  const portalUrls = ['https://research.meta.ai/', 'https://research.meta.ai/blog'];
+  const discovered = new Map<
+    string,
+    { title: string; link: string; date: string; snippet: string }
+  >();
+
+  for (const portalUrl of portalUrls) {
+    try {
+      const res = await fetch(portalUrl, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+        },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) continue;
+      const html = await res.text();
+      const $ = cheerio.load(html);
+
+      $('article').each((_, el) => {
+        const card = $(el);
+        const rawHref = card.find('a[href]').first().attr('href') || '';
+        if (!rawHref) return;
+        const link = rawHref.startsWith('http')
+          ? rawHref
+          : `https://research.meta.ai${rawHref.startsWith('/') ? '' : '/'}${rawHref}`;
+        const title = card
+          .find('h2, h1, h3')
+          .first()
+          .text()
+          .replace(/\u00a0/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        const dateTime =
+          card.find('time').first().attr('datetime') ||
+          card.find('time').first().attr('dateTime') ||
+          '';
+        const cardSnippet = card
+          .find('p')
+          .first()
+          .text()
+          .replace(/\u00a0/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        if (title && link) {
+          discovered.set(link, {
+            title,
+            link,
+            date: dateTime ? new Date(dateTime).toISOString() : new Date().toISOString(),
+            snippet: cardSnippet,
+          });
+        }
+      });
+    } catch (e) {
+      console.warn(`[ingestion] Warning fetching Meta portal ${portalUrl}:`, e);
+    }
+  }
+
+  // Also inspect sitemap.xml so any /blog/ post not on the front grid is captured
+  try {
+    const res = await fetch('https://research.meta.ai/sitemap.xml', {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AIResearchPulse/2.0)' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (res.ok) {
+      const xml = await res.text();
+      const $ = cheerio.load(xml, { xmlMode: true });
+      $('url').each((_, el) => {
+        const loc = $(el).find('loc').text().trim();
+        const lastmod = $(el).find('lastmod').text().trim();
+        if (loc && loc.includes('/blog/') && !discovered.has(loc)) {
+          discovered.set(loc, {
+            title: '',
+            link: loc,
+            date: lastmod ? new Date(lastmod).toISOString() : new Date().toISOString(),
+            snippet: '',
+          });
+        }
+      });
+    }
+  } catch {}
+
+  const items = Array.from(discovered.values());
+  await Promise.all(
+    items.map(async (item) => {
+      try {
+        const res = await fetch(item.link, {
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+          },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!res.ok) return;
+        const html = await res.text();
+        const $ = cheerio.load(html);
+
+        const ogTitle =
+          $('meta[property="og:title"]').attr('content') ||
+          $('h1').first().text() ||
+          item.title;
+        if (!item.title && ogTitle) {
+          item.title = ogTitle.replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+        }
+
+        const metaDesc = (
+          $('meta[property="og:description"]').attr('content') ||
+          $('meta[name="description"]').attr('content') ||
+          ''
+        )
+          .replace(/\u00a0/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        $('script, style, nav, footer, header').remove();
+        const bodyParas: string[] = [];
+        $('[class*="max-w-article"] p, main p, article p, p').each((_, pEl) => {
+          const parentCls = $(pEl).parent().attr('class') || '';
+          if (parentCls.includes('transcriber') || parentCls.includes('Consent')) return;
+          const txt = $(pEl)
+            .text()
+            .replace(/\u00a0/g, ' ')
+            .replace(/^\d+\s+minute\s+read\s*/i, '')
+            .replace(/^FEATURED\s*/i, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+          if (
+            txt.length > 55 &&
+            !txt.toLowerCase().includes('cookie') &&
+            !txt.includes('This demo uses your microphone') &&
+            !txt.startsWith('For more details about our evaluations')
+          ) {
+            bodyParas.push(txt);
+          }
+        });
+
+        const firstPara = bodyParas[0] || '';
+        if (metaDesc && firstPara && !firstPara.startsWith(metaDesc.slice(0, 30))) {
+          item.snippet = `${metaDesc} ${firstPara}`.slice(0, 550);
+        } else {
+          item.snippet = (metaDesc || firstPara || item.snippet || item.title).slice(0, 550);
+        }
+      } catch {}
+    })
+  );
+
+  return items
+    .filter((item) => Boolean(item.title && item.link))
+    .map((item) => ({
+      title: item.title,
+      link: item.link,
+      date: item.date,
+      source: 'Meta AI' as const,
+      snippet: item.snippet || item.title,
+      tags: extractTagsDeterministic(item.title, item.snippet || item.title),
+    }));
+}
 
 // ---------------------------------------------------------------------------
 // Google Cloud Blog Boq batchexecute (SQC9mf) Historical Crawler (2025+)
@@ -206,11 +385,12 @@ export async function ingestAll(force = false): Promise<Article[]> {
   try {
     console.log('[ingestion] Starting RSS aggregation...');
 
-    // 1. Fetch all RSS feeds in parallel
-    const rssResults = await Promise.all(
-      FEEDS.map((f) => fetchRSS(f.url, f.source as Article['source']))
-    );
-    const allArticles = rssResults.flat();
+    // 1. Fetch Meta AI Research Portal (https://research.meta.ai/) + all RSS feeds in parallel
+    const [metaPortalArticles, rssResults] = await Promise.all([
+      fetchMetaResearchPortal(),
+      Promise.all(FEEDS.map((f) => fetchRSS(f.url, f.source as Article['source']))),
+    ]);
+    const allArticles = [...metaPortalArticles, ...rssResults.flat()];
 
     // 1b. Self-healing check: if fewer than 100 Google Cloud AI articles exist, backfill 2025+ archive
     try {
@@ -224,7 +404,7 @@ export async function ingestAll(force = false): Promise<Article[]> {
       console.warn('[ingestion] Historical Google Cloud AI check warning:', e);
     }
 
-    // 2. Deduplicate by normalised link
+    // 2. Deduplicate by normalised link and (source, title)
     const uniqueArticles = deduplicateArticles(allArticles);
 
     // 3. Filter out non-technical / PR / navigation articles BEFORE database storage
@@ -266,8 +446,8 @@ async function fetchRSS(url: string, source: Article['source']): Promise<Article
 
     return feed.items
       .map((item) => {
-        let title = item.title || 'No title';
-        const link = item.link || '';
+        let title = (item.title || 'No title').replace(/\u00a0/g, ' ').trim();
+        const link = (item.link || '').trim();
         if (!link) return null;
 
         if (source === 'Anthropic') {
@@ -276,7 +456,10 @@ async function fetchRSS(url: string, source: Article['source']): Promise<Article
           title = title.replace(/([a-z])([A-Z])/g, '$1 $2');
         }
 
-        const snippet = (item.contentSnippet || item.content || '').replace(/<[^>]*>?/gm, '').trim();
+        const snippet = (item.contentSnippet || item.content || '')
+          .replace(/<[^>]*>?/gm, '')
+          .replace(/\u00a0/g, ' ')
+          .trim();
         let subLabTag: string | null = null;
         if (source === 'Chinese Frontier') {
           title = title.replace(/\s+/g, ' ').trim();
@@ -296,7 +479,9 @@ async function fetchRSS(url: string, source: Article['source']): Promise<Article
         }
 
         const rawCategories = item.categories
-          ? item.categories.filter((c) => typeof c === 'string' && c.length < 25).slice(0, 3)
+          ? item.categories
+              .filter((c) => typeof c === 'string' && (TAG_TAXONOMY as readonly string[]).includes(c))
+              .slice(0, 3)
           : [];
         const baseTags =
           rawCategories.length > 0 ? rawCategories : extractTagsDeterministic(title, snippet);
@@ -322,11 +507,14 @@ async function fetchRSS(url: string, source: Article['source']): Promise<Article
 }
 
 function deduplicateArticles(articles: Article[]): Article[] {
-  const seen = new Set<string>();
+  const seenLinks = new Set<string>();
+  const seenTitles = new Set<string>();
   return articles.filter((a) => {
-    const key = a.link.split('?')[0].replace(/\/$/, '');
-    if (seen.has(key)) return false;
-    seen.add(key);
+    const linkKey = a.link.split('?')[0].replace(/\/$/, '').toLowerCase();
+    const titleKey = `${a.source}::${a.title.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()}`;
+    if (seenLinks.has(linkKey) || seenTitles.has(titleKey)) return false;
+    seenLinks.add(linkKey);
+    seenTitles.add(titleKey);
     return true;
   });
 }

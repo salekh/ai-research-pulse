@@ -1,10 +1,12 @@
 import { GoogleAuth } from 'google-auth-library';
 import { GoogleGenAI } from '@google/genai';
 
-export const project =
+const rawProject =
   process.env.GOOGLE_CLOUD_PROJECT ||
   process.env.GCLOUD_PROJECT ||
-  'sa-nexus-gcp-4-sandbox-183936';
+  'sa-learning-1';
+export const project =
+  rawProject === 'sa-nexus-gcp-4-sandbox-183936' ? 'sa-learning-1' : rawProject;
 export const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
 
 export const MODEL_REGISTRY = {

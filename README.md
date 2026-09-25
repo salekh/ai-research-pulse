@@ -12,16 +12,17 @@
 
 ## 1. Executive Overview
 
-**AI Research Pulse** continuously aggregates, filters, embeds, synthesizes, and vocalizes technical publications across **8 frontier AI research laboratories & cloud engineering teams**:
+**AI Research Pulse** continuously aggregates, filters, embeds, synthesizes, and vocalizes technical publications across **9 frontier AI research laboratories & cloud engineering teams**:
 - **Google Research** & **Google DeepMind**
 - **Google Cloud AI** (*AI & Machine Learning Blog — live RSS + full historical archive from 2025 onwards via Boq RPC `SQC9mf`*)
 - **OpenAI**
 - **Anthropic**
-- **Meta AI (FAIR)**
+- **Meta AI** (*Live portal/sitemap crawler for `https://research.meta.ai/` + `ai.meta.com/blog/` + `engineering.fb.com` AI Research & ML Applications*)
 - **Microsoft Research**
 - **x.AI**
+- **Chinese Frontier** (*DeepSeek, Qwen, Kimi, GLM*)
 
-The `v2.0.0-fde-pulse` release represents a comprehensive architectural overhaul over the legacy implementation (preserved at tag [`v1.0.0-legacy`](https://github.com/sanchitalekh/ai-research-pulse/tree/v1.0.0-legacy)), replacing serial $O(N)$ N+1 API bottlenecks, ephemeral single-point database failure modes, and generic UI styling with a resilient, zero-loss, production-grade Google Cloud architecture indexing **2,229 technical publications** (**805 from 2026**, **531 from Google Cloud AI**).
+The `v2.0.0-fde-pulse` release represents a comprehensive architectural overhaul over the legacy implementation (preserved at tag [`v1.0.0-legacy`](https://github.com/sanchitalekh/ai-research-pulse/tree/v1.0.0-legacy)), replacing serial $O(N)$ N+1 API bottlenecks, ephemeral single-point database failure modes, and generic UI styling with a resilient, zero-loss, production-grade Google Cloud architecture indexing **2,697 technical publications** (**1,079 from 2026**, **555 from Google Cloud AI**, **278 from Chinese Frontier**, **59 from Meta AI**).
 
 ---
 
@@ -263,7 +264,7 @@ To solve all three failure modes simultaneously while keeping GCP costs near zer
 #### Key Mechanisms:
 - **Automatic Schema Migration ([`isPostgresAvailable()`](./lib/db.ts))**: Executes idempotent `ALTER TABLE articles ADD COLUMN IF NOT EXISTS summary TEXT, key_innovation TEXT, significance TEXT;` on connection initialization.
 - **Singleton Pool Guard**: Attaches `globalThis.__pgPool` with `max: 5` connections and `idleTimeoutMillis: 30000`.
-- **11-Nines Durable GCS Master Archive ([`backupArticlesToGCS()`](./lib/gcs-archive.ts))**: Every ingestion write asynchronously mirrors the complete 2,229-article corpus (including **805 articles from 2026**, **531 Google Cloud AI articles from 2025–2026**, and all 768-dimensional embeddings) to `gs://ai-research-pulse-assets/archive/articles-master.json` and `gs://ai-research-pulse-assets/archive/news.db`.
+- **11-Nines Durable GCS Master Archive ([`backupArticlesToGCS()`](./lib/gcs-archive.ts))**: Every ingestion write asynchronously mirrors the complete 2,697-article corpus (including **1,079 articles from 2026**, **555 Google Cloud AI articles**, **278 Chinese Frontier articles**, **59 Meta AI articles**, and all 768-dimensional embeddings) to `gs://ai-research-pulse-assets/archive/articles-master.json` and `gs://ai-research-pulse-assets/archive/news.db`.
 - **Bidirectional Cold-Start Hydration ([`ensureDatabaseHydrated()`](./lib/db.ts))**: On cold start, if local SQLite (`data/news.db`) or Cloud SQL PostgreSQL has fewer records than the GCS Master Archive, the engine automatically restores and batch-upserts all missing records across all three tiers.
 
 <details>
