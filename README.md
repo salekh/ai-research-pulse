@@ -1,18 +1,25 @@
-# AI Research Pulse (`v2.0.0-fde-pulse`)
+# AI Research Pulse (`v3.0.0-gemini4-a2ui`)
 
-**Frontier AI Research Intelligence, Multi-Speaker Audio Synthesis, & Recursive Self-Improving Discovery Platform**  
-*Google Cloud AI Tech Group (FDE) Brand Specification · Powered by Gemini 3.8 Flash, Gemini 3.8 Flash TTS, & Vertex AI Hybrid Vector Search*
+**Frontier AI Research Intelligence, A2UI 1.0 Visual Research Briefs, Multi-Speaker Audio Synthesis, & Recursive Self-Improving Discovery Platform**  
+*Google Cloud AI Tech Group (FDE) Brand Specification · Powered by Gemini 4 Hydrogen & Carbon, Gemini 3.8 Flash TTS, A2UI 1.0, & Vertex AI Hybrid Vector Search*
 
 [![Live Cloud Run Deployment](https://img.shields.io/badge/Cloud_Run-Live_Production-4285F4?style=for-the-badge&logo=google-cloud&logoColor=white)](https://ai-research-pulse-710258046947.us-central1.run.app)
-[![Primary Reasoning Model](https://img.shields.io/badge/Vertex_AI-gemini--3.8--flash-34A853?style=for-the-badge&logo=google&logoColor=white)](./lib/vertex.ts)
-[![Speech Synthesis](https://img.shields.io/badge/TTS-gemini--3.8--flash--tts-4471ED?style=for-the-badge)](./lib/audio-generator.ts)
+[![Fast Reasoning Model](https://img.shields.io/badge/Vertex_AI-gemini--4--hydrogen-34A853?style=for-the-badge&logo=google&logoColor=white)](./lib/vertex.ts)
+[![Deep Synthesis Model](https://img.shields.io/badge/Vertex_AI-gemini--4--carbon-4471ED?style=for-the-badge&logo=google&logoColor=white)](./lib/vertex.ts)
+[![Speech Synthesis](https://img.shields.io/badge/TTS-gemini--3.8--flash--tts-4285F4?style=for-the-badge)](./lib/audio-generator.ts)
+[![A2UI Protocol](https://img.shields.io/badge/Visual_Briefs-A2UI_1.0-1967D2?style=for-the-badge)](./lib/a2ui/spec.ts)
 [![Zero-Loss Archival](https://img.shields.io/badge/Storage-3--Tier_Zero--Loss_GCS_%2B_Cloud_SQL_%2B_SQLite-FBBC04?style=for-the-badge)](./lib/gcs-archive.ts)
+
+> **Governance & Authoritative Documentation:**
+> - [`CONSTITUTION.md`](./CONSTITUTION.md) — Enforceable FDE corporate design tokens, WCAG 2.1 AA contrast & static Google Sans typesetting laws, Gemini 4 model hygiene, A2UI 1.0 governance, and security invariants.
+> - [`SPEC.md`](./SPEC.md) — Complete system architecture, 3-tier persistence schema, live-verified Gemini 4 Hydrogen/Carbon & 3.8 TTS routing, and A2UI 1.0 Visual Article Renderer wire contract.
+> - [`BACKLOG.md`](./BACKLOG.md) — Maintained product & engineering backlog tracking completed P0 milestones and prioritized P1/P2 roadmap items.
 
 ---
 
 ## 1. Executive Overview
 
-**AI Research Pulse** continuously aggregates, filters, embeds, synthesizes, and vocalizes technical publications across **9 frontier AI research laboratories & cloud engineering teams**:
+**AI Research Pulse** continuously aggregates, filters, embeds, synthesizes, visually briefs, and vocalizes technical publications across **9 frontier AI research laboratories & cloud engineering teams**:
 - **Google Research** & **Google DeepMind**
 - **Google Cloud AI** (*AI & Machine Learning Blog — live RSS + full historical archive from 2025 onwards via Boq RPC `SQC9mf`*)
 - **OpenAI**
@@ -22,7 +29,7 @@
 - **x.AI**
 - **Chinese Frontier** (*DeepSeek, Qwen, Kimi, GLM*)
 
-The `v2.0.0-fde-pulse` release represents a comprehensive architectural overhaul over the legacy implementation (preserved at tag [`v1.0.0-legacy`](https://github.com/sanchitalekh/ai-research-pulse/tree/v1.0.0-legacy)), replacing serial $O(N)$ N+1 API bottlenecks, ephemeral single-point database failure modes, and generic UI styling with a resilient, zero-loss, production-grade Google Cloud architecture indexing **2,697 technical publications** (**1,079 from 2026**, **555 from Google Cloud AI**, **278 from Chinese Frontier**, **59 from Meta AI**).
+The `v3.0.0-gemini4-a2ui` release builds on the zero-loss `v2.0.0-fde-pulse` foundation (legacy archive preserved at [`v1.0.0-legacy`](https://github.com/sanchitalekh/ai-research-pulse/tree/v1.0.0-legacy)), upgrading the inference backbone to dual-tier **Gemini 4 (`gemini-4-hydrogen` + `gemini-4-carbon`)** & **Gemini 3.8 Speech (`gemini-3.8-flash-tts` / `gemini-3.8-flash-lite-tts`)** on Vertex AI (`global`), introducing the declarative **A2UI 1.0 Visual Article Renderer**, and indexing **2,697 technical publications** (**1,019 from 2026**, **555 from Google Cloud AI**, **263 from Chinese Frontier**, **59 from Meta AI**).
 
 ---
 
@@ -264,7 +271,7 @@ To solve all three failure modes simultaneously while keeping GCP costs near zer
 #### Key Mechanisms:
 - **Automatic Schema Migration ([`isPostgresAvailable()`](./lib/db.ts))**: Executes idempotent `ALTER TABLE articles ADD COLUMN IF NOT EXISTS summary TEXT, key_innovation TEXT, significance TEXT;` on connection initialization.
 - **Singleton Pool Guard**: Attaches `globalThis.__pgPool` with `max: 5` connections and `idleTimeoutMillis: 30000`.
-- **11-Nines Durable GCS Master Archive ([`backupArticlesToGCS()`](./lib/gcs-archive.ts))**: Every ingestion write asynchronously mirrors the complete 2,697-article corpus (including **1,079 articles from 2026**, **555 Google Cloud AI articles**, **278 Chinese Frontier articles**, **59 Meta AI articles**, and all 768-dimensional embeddings) to `gs://ai-research-pulse-assets/archive/articles-master.json` and `gs://ai-research-pulse-assets/archive/news.db`.
+- **11-Nines Durable GCS Master Archive ([`backupArticlesToGCS()`](./lib/gcs-archive.ts))**: Every ingestion write asynchronously mirrors the complete 2,697-article corpus (including **1,019 articles from 2026**, **555 Google Cloud AI articles**, **263 Chinese Frontier articles**, **59 Meta AI articles**, and 768-dimensional embeddings) to `gs://ai-research-pulse-assets/archive/articles-master.json` and `gs://ai-research-pulse-assets/archive/news.db`.
 - **Bidirectional Cold-Start Hydration ([`ensureDatabaseHydrated()`](./lib/db.ts))**: On cold start, if local SQLite (`data/news.db`) or Cloud SQL PostgreSQL has fewer records than the GCS Master Archive, the engine automatically restores and batch-upserts all missing records across all three tiers.
 
 <details>
@@ -447,12 +454,22 @@ digraph IngestionAndHybridSearch {
 
 * **Editable Source**: [`docs/diagrams/audio_and_transcription_flow.mmd`](./docs/diagrams/audio_and_transcription_flow.mmd) | **Vector SVG**: [`public/architecture/audio_and_transcription_flow.svg`](./public/architecture/audio_and_transcription_flow.svg)
 
-1. **Multi-Speaker Script Generation (`gemini-3.8-flash`)**:
-   - Generates either a 3-minute **Executive Commuter Briefing** (single narrator) or a 5-minute **Deep-Dive Technical Podcast** featuring two distinct hosts: **Dr. Anya** (senior AI researcher, analytical and authoritative) and **Liam** (tech journalist, probing and energetic).
-2. **Cascading Speech Synthesis (`MODEL_REGISTRY.TTS_MODELS`)**:
-   - Synthesizes multi-speaker audio using `gemini-3.8-flash-tts` (`MultiSpeakerVoiceConfig` assigning voice `Aoede` to Dr. Anya and `Puck` to Liam), cascading automatically through `gemini-3.5-flash-preview-tts` $\rightarrow$ `gemini-2.5-pro-preview-tts` $\rightarrow$ `gemini-2.5-flash-preview-tts`.
-3. **Multimodal Audio Transcription & Speaker Diarization (`gemini-3.8-flash`)**:
-   - Clicking **Multimodal Transcribe (3.8 Flash)** in [`components/insights-view.tsx`](./components/insights-view.tsx) sends the WAV buffer via native `inlineData` to `gemini-3.8-flash`, returning speaker-diarized segments with timestamps and verified ML terminology.
+1. **Tiered Script Generation (`gemini-4-carbon` & `gemini-4-hydrogen`)**:
+   - Generates a 5-minute **Deep-Dive Technical Podcast** (`gemini-4-carbon`, `MEDIUM` thinking) featuring two distinct hosts — **Dr. Anya** (senior AI researcher) and **Liam** (tech journalist) — or a 3-minute **Executive Commuter Briefing** (`gemini-4-hydrogen`, `LOW` thinking, single narrator). Exposes both `X-Model-Used` (TTS) and `X-Script-Model` (LLM) headers.
+2. **Cascading Speech Synthesis (`gemini-3.8-flash-tts` & `gemini-3.8-flash-lite-tts`)**:
+   - Synthesizes multi-speaker podcasts via `gemini-3.8-flash-tts` (Vertex AI `v1beta1` REST `global` with per-turn `speech_metadata: { speaker, style }`) and single-speaker briefings via `gemini-3.8-flash-lite-tts`, preserving single-wrapped `RIFF...WAVE` headers with automatic fallback to bundled WAVs.
+3. **Multimodal Audio Transcription & Speaker Diarization (`gemini-4-hydrogen`)**:
+   - Sends validated local `/insights/` or public WAV buffers via native `inlineData` to `gemini-4-hydrogen` (fallback `gemini-3.8-flash`), returning speaker-diarized segments with timestamps and verified ML terminology.
+
+---
+
+### 3.5 A2UI 1.0 Visual Article Renderer (`POST /api/a2ui`)
+
+Every publication card in the Research Feed includes a **Visual Brief** action that converts any research article into an interactive, FDE-branded executive brief using the declarative **A2UI 1.0** wire protocol (`application/a2ui+json`, `version: "1.0"`):
+
+- **Protocol & Validator ([`lib/a2ui/spec.ts`](./lib/a2ui/spec.ts), [`lib/a2ui/validator.ts`](./lib/a2ui/validator.ts)):** Emits the canonical 3-message A2UI 1.0 stream (`createSurface` → `updateDataModel` → `updateComponents`) over a strict dual-catalog allowlist — Basic Catalog v1.0 (`Column`, `Row`, `Card`, `List`, `Tabs`, `Divider`, `Text`, `Button`, `Icon`, `Modal`) plus the Research Brief Extension Catalog (`HeroBanner`, `Heading`, `MetricCard`, `Callout`, `StepFlow`, `DataTable`, `Collapsible`, `Badge`) resolved via unprefixed `catalogId` and bound with RFC 6901 `{ "@path": ... }` and `{ "@call": ... }` directives.
+- **Backend Synthesis ([`app/api/a2ui/route.ts`](./app/api/a2ui/route.ts)):** Performs hop-by-hop DNS/IP SSRF-hardened article extraction (`6s` timeout, `512 KB` cap), invokes `gemini-4-hydrogen` (`thinkingLevel: 'LOW'`), locks canonical URLs and badge normalization server-side, validates every surface against cycle/depth (`<= 24`)/node (`<= 200`)/prototype-pollution/URL invariants, caches validated briefs in a 128-entry LRU (`6h` TTL), supports `Accept: application/a2ui+json`, and automatically degrades to a deterministic A2UI 1.0 fallback without poisoning cache.
+- **Corporate Renderer & Inspector ([`components/a2ui/A2UIRenderer.tsx`](./components/a2ui/A2UIRenderer.tsx), [`components/a2ui/catalog.tsx`](./components/a2ui/catalog.tsx), [`components/a2ui/ArticleVisualDrawer.tsx`](./components/a2ui/ArticleVisualDrawer.tsx)):** Full-height responsive slide-over drawer (Desktop `1440×900` & Mobile `390×844`) adhering strictly to [`CONSTITUTION.md`](./CONSTITUTION.md) WCAG 2.1 AA contrast & static Google Sans typesetting rules, complete with an **Inspect A2UI 1.0 Payload** JSON viewer.
 
 <details>
 <summary><strong>View / Edit Mermaid Sequence Diagram Source Code (<code>docs/diagrams/audio_and_transcription_flow.mmd</code>)</strong></summary>
@@ -498,8 +515,9 @@ sequenceDiagram
 | Subsystem | Design Choice | Performance / Cost Benefit | Residual Risk & Edge Cases | Mitigation Strategy |
 | :--- | :--- | :--- | :--- | :--- |
 | **Storage & Persistence** | **3-Tier Engine** (Cloud SQL Postgres + Native SQLite + GCS Master Archive) | Zero data loss across deploys; `<2ms` local SQLite read fallback; `<$0.0002/mo` GCS cost. | Asynchronous GCS backup in `saveArticles()` has an ~800ms eventual consistency window if `SIGKILL` occurs mid-flight. | Cloud Scheduler runs every 6 hours (`0 */6 * * *`) and `ensureDatabaseHydrated()` reconciles state on every cold start. |
-| **AI Model Routing** | **Cascading Registry** (`gemini-3.8-flash` $\rightarrow$ `3.5-flash` $\rightarrow$ `2.5-flash` + CLI OAuth fallback) | 99.99% availability; seamless execution on Cloudtop even when local ADC expires (`invalid_rapt`). | Latency spikes if primary model experiences regional quota exhaustion and cascades through 2+ fallbacks. | Telemetry tracks `fallbackCount` and `avgLatencyMs` in `/api/self-improve`. |
-| **Multimodal Audio Transcription** | **Base64 `inlineData` Payload** via `gemini-3.8-flash` | Zero external speech-to-text API setup; native speaker diarization + ML domain accuracy. | Base64 encoding inflates WAV size by ~33%; files $>20\text{ MB}$ (~10+ min uncompressed WAV) exceed inline payload limits. | Episodes are capped at 3–5 minutes (~8–14 MB WAV); longer episodes should use `fileData` with `gs://` URIs. |
+| **AI Model Routing** | **Dual-Tier Gemini 4 Registry** (`gemini-4-hydrogen` fast / `gemini-4-carbon` deep + `3.8-flash` fallbacks, `global` endpoint) | Sub-2s interactive JSON & A2UI synthesis (`LOW` thinking) paired with flagship cross-lab & meta-audit reasoning (`MEDIUM` thinking). | Thinking tokens count inside `maxOutputTokens`; `us-central1` returns 404 for Gemini 4 & 3.8 TTS. | `normalizeConfigForModel()` in `lib/vertex.ts` enforces safe `thinkingLevel`, generous `maxOutputTokens`, and `location: "global"`. |
+| **A2UI 1.0 Visual Briefs** | **Declarative A2UI 1.0 Wire Stream + Dual-Catalog Allowlist** (`POST /api/a2ui`) | Zero arbitrary HTML/JS execution; strict FDE corporate typesetting; `5ms` cached LRU hits; inspectable wire payload. | LLM output could emit malformed pointers, cycles, or overlong labels. | `lib/a2ui/validator.ts` enforces cycle/depth/node/SSRF/URL guards & badge normalization with an uncached deterministic fallback. |
+| **Multimodal Audio Transcription** | **Base64 `inlineData` Payload** via `gemini-4-hydrogen` | Zero external speech-to-text API setup; native speaker diarization + ML domain accuracy (~3–5s). | Base64 encoding inflates WAV size by ~33%; files $>20\text{ MB}$ exceed inline payload limits. | Episodes are capped at 3–5 minutes (~8–14 MB WAV) and `/api/insights/transcribe` enforces a 20 MB cap + path/SSRF validation. |
 | **Ingestion & Tagging** | **15-Item Batch JSON Tagging** & **100-Item Batch Embeddings** | $15\times$ reduction in LLM calls; $100\times$ reduction in embedding HTTP round-trips. | Malformed JSON output from LLM could fail an entire 15-article tag batch. | `generateTagsBatch()` wraps JSON parsing in a try/catch that falls back to `extractTagsDeterministic()` regex rules. |
 
 ---
@@ -546,6 +564,6 @@ gcloud run deploy ai-research-pulse \
   --project=sa-learning-1 \
   --region=us-central1 \
   --allow-unauthenticated \
-  --update-env-vars="GEMINI_MODEL=gemini-3.8-flash,GEMINI_TTS_MODEL=gemini-3.8-flash-tts,GEMINI_TRANSCRIPTION_MODEL=gemini-3.8-flash,GCS_ARCHIVE_BUCKET=ai-research-pulse-assets" \
+  --set-env-vars="GOOGLE_CLOUD_PROJECT=sa-learning-1,GOOGLE_CLOUD_LOCATION=global,GEMINI_MODEL=gemini-4-hydrogen,GEMINI_CARBON_MODEL=gemini-4-carbon,GEMINI_TTS_MODEL=gemini-3.8-flash-tts,GEMINI_TTS_LITE_MODEL=gemini-3.8-flash-lite-tts,GEMINI_TRANSCRIPTION_MODEL=gemini-4-hydrogen,GEMINI_EMBEDDING_MODEL=text-embedding-004,VERTEX_RERANKER_MODEL=semantic-ranker-512@latest,GCS_ARCHIVE_BUCKET=ai-research-pulse-assets" \
   --add-cloudsql-instances="sa-learning-1:us-central1:ai-research-pulse-db"
 ```

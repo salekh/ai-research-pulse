@@ -12,7 +12,7 @@ const EXCLUDED_TITLES = new Set([
 
 /**
  * Filter articles to keep only genuine technical AI research.
- * First applies fast heuristic URL/title pruning, then uses gemini-3.8-flash
+ * First applies fast heuristic URL/title pruning, then uses gemini-4-hydrogen
  * batch classification with deterministic fallback.
  */
 export async function filterTechnicalArticles(articles: Article[]): Promise<Article[]> {
@@ -83,8 +83,10 @@ Only include indices of articles that should be KEPT. Indices are 0-based and mu
     try {
       const { text } = await generateContentWithFallback({
         contents: prompt,
+        tier: 'hydrogen',
+        thinkingLevel: 'LOW',
         config: {
-          temperature: 0.1,
+          maxOutputTokens: 4096,
           responseMimeType: 'application/json',
         },
       });

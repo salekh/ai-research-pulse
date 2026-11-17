@@ -66,10 +66,10 @@ ${articlesContext}`;
     try {
       const { text, modelUsed } = await generateContentWithFallback({
         contents: prompt,
+        tier: 'carbon',
+        thinkingLevel: 'MEDIUM',
         config: {
-          temperature: 0.3,
-          maxOutputTokens: 8192,
-          topP: 0.95,
+          maxOutputTokens: 16384,
           responseMimeType: 'application/json',
         },
       });

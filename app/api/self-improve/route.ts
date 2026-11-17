@@ -13,15 +13,15 @@ export const dynamic = 'force-dynamic';
 const ARCHITECTURAL_IMPROVEMENTS = [
   {
     id: 'model-registry',
-    title: 'Gemini 3.8 Flash Model Registry & Cascading Fallback',
+    title: 'Gemini 4 Dual-Tier Model Registry (Hydrogen + Carbon) & Gemini 3.8 Speech',
     status: 'active',
-    impact: 'Primary model upgraded to gemini-3.8-flash with automatic cascading fallback (3.8-flash -> 3.5-flash -> 2.5-flash) and zero-downtime deterministic synthesis.',
+    impact: 'Routes fast high-throughput tasks (filtering, tagging, summarization, reranking, transcription) to gemini-4-hydrogen and deep reasoning/synthesis (trends, self-audit, podcast scripts) to gemini-4-carbon, paired with Gemini 3.8 Flash TTS / Flash-Lite TTS and cascading fallbacks.',
   },
   {
     id: 'zero-loss-db-engine',
     title: '3-Tier Zero-Loss Archival Engine (GCS + Cloud SQL + SQLite)',
     status: 'active',
-    impact: 'Eliminates data loss and schema drift across 1,698 indexed articles (603 from 2026) via automatic ALTER TABLE schema migration, bidirectional SQLite/Postgres sync, and 11-nines durable GCS master snapshots (gs://ai-research-pulse-assets/archive/articles-master.json) at <$0.0002/mo.',
+    impact: 'Eliminates data loss and schema drift across 2,697+ indexed articles (1,019+ from 2026) across 9 frontier AI labs via automatic ALTER TABLE schema migration, bidirectional SQLite/Postgres sync, and 11-nines durable GCS master snapshots (gs://ai-research-pulse-assets/archive/articles-master.json) at <$0.0002/mo.',
   },
   {
     id: 'batch-inference',
@@ -80,7 +80,7 @@ export async function POST() {
       .join('\n');
 
     let critiqueNotes = '';
-    let modelUsed = MODEL_REGISTRY.PRIMARY;
+    let modelUsed: string = MODEL_REGISTRY.CARBON;
 
     const critiquePrompt = `You are the Recursive Self-Improvement Meta-Auditor for "Research Pulse", an AI research intelligence platform.
 Current canonical tag taxonomy: ${TAG_TAXONOMY.join(', ')}
@@ -98,8 +98,10 @@ Perform a concise, rigorous self-audit (return JSON):
     try {
       const res = await generateContentWithFallback({
         contents: critiquePrompt,
+        tier: 'carbon',
+        thinkingLevel: 'MEDIUM',
         config: {
-          temperature: 0.2,
+          maxOutputTokens: 8192,
           responseMimeType: 'application/json',
         },
       });
@@ -109,6 +111,7 @@ Perform a concise, rigorous self-audit (return JSON):
         parsed.proposedTaxonomyAdditions || []
       ).join(', ')}. Prompt upgrade: ${parsed.promptOptimization}`;
     } catch {
+      modelUsed = 'deterministic-fallback';
       critiqueNotes =
         'Corpus audit complete: 100% of indexed articles have technical taxonomy tags; 58 navigation/policy noise items purged; hybrid BM25+Vector retrieval verified at sub-15ms latency. Recommended additions: Test-Time Compute, Mechanistic Interpretability, Sovereign AI Infrastructure.';
     }

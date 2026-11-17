@@ -9,24 +9,101 @@ export const project =
   rawProject === 'sa-nexus-gcp-4-sandbox-183936' ? 'sa-learning-1' : rawProject;
 export const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
 
+export type ModelTier = 'hydrogen' | 'carbon';
+export type ThinkingLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'XHIGH';
+
+function uniqueModels(models: Array<string | undefined>): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const m of models) {
+    const trimmed = m?.trim();
+    if (trimmed && !seen.has(trimmed)) {
+      seen.add(trimmed);
+      out.push(trimmed);
+    }
+  }
+  return out;
+}
+
+const hydrogenModel = process.env.GEMINI_MODEL || 'gemini-4-hydrogen';
+const carbonModel =
+  process.env.GEMINI_CARBON_MODEL ||
+  process.env.GEMINI_PRO_MODEL ||
+  'gemini-4-carbon';
+const ttsModel = process.env.GEMINI_TTS_MODEL || 'gemini-3.8-flash-tts';
+const ttsLiteModel =
+  process.env.GEMINI_TTS_LITE_MODEL || 'gemini-3.8-flash-lite-tts';
+const transcriptionModel =
+  process.env.GEMINI_TRANSCRIPTION_MODEL || hydrogenModel;
+const embeddingModel =
+  process.env.GEMINI_EMBEDDING_MODEL || 'text-embedding-004';
+const rerankerModel =
+  process.env.VERTEX_RERANKER_MODEL || 'semantic-ranker-512@latest';
+
+/**
+ * Verified Model Registry (sa-learning-1, global endpoint).
+ *
+ * - PRIMARY / HYDROGEN: `gemini-4-hydrogen` (GA) — fast, high-throughput LLM
+ *   for filtering, tagging, article summarization, reranking, and quick synthesis.
+ * - CARBON: `gemini-4-carbon` (GA) — flagship frontier reasoning LLM for
+ *   multi-article trend synthesis, recursive self-improvement, and deep podcast scripting.
+ * - TTS: `gemini-3.8-flash-tts` (GA) — flagship studio multi-speaker TTS.
+ * - TTS_LITE: `gemini-3.8-flash-lite-tts` (GA) — fast, cost-efficient single-speaker TTS.
+ * - TRANSCRIPTION: `gemini-4-hydrogen` (GA) — multimodal speech-to-text + diarization.
+ * - EMBEDDING: `text-embedding-004` (768-dim) — preserved for vector compatibility
+ *   across existing Cloud SQL / SQLite rows (scheduled migration to gemini-embedding-001
+ *   before April 1, 2027 retirement).
+ * - RERANKER: `semantic-ranker-512@latest` via Discovery Engine Ranking API.
+ */
 export const MODEL_REGISTRY = {
-  PRIMARY: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
-  FALLBACKS: ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'],
-  TTS: process.env.GEMINI_TTS_MODEL || 'gemini-3.8-flash-tts',
-  TTS_MODELS: [
+  PRIMARY: hydrogenModel,
+  HYDROGEN: hydrogenModel,
+  CARBON: carbonModel,
+  FALLBACKS: uniqueModels([
+    hydrogenModel,
+    'gemini-4-hydrogen',
+    'gemini-3.8-flash',
+    'gemini-3.5-flash',
+  ]),
+  CARBON_FALLBACKS: uniqueModels([
+    carbonModel,
+    'gemini-4-carbon',
+    hydrogenModel,
+    'gemini-4-hydrogen',
+    'gemini-3.8-flash',
+  ]),
+  TTS: ttsModel,
+  TTS_LITE: ttsLiteModel,
+  TTS_MODELS: uniqueModels([
+    ttsModel,
     'gemini-3.8-flash-tts',
-    'gemini-3.5-flash-preview-tts',
-    'gemini-2.5-pro-preview-tts',
-    'gemini-2.5-flash-preview-tts',
-  ],
-  TRANSCRIPTION: process.env.GEMINI_TRANSCRIPTION_MODEL || 'gemini-3.8-flash',
-  TRANSCRIPTION_MODELS: ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'],
-  EMBEDDING: 'text-embedding-004',
-  RERANKER: 'semantic-ranker-512@latest',
+    ttsLiteModel,
+    'gemini-3.8-flash-lite-tts',
+  ]),
+  TTS_OVERVIEW_MODELS: uniqueModels([
+    ttsLiteModel,
+    'gemini-3.8-flash-lite-tts',
+    ttsModel,
+    'gemini-3.8-flash-tts',
+  ]),
+  TRANSCRIPTION: transcriptionModel,
+  TRANSCRIPTION_MODELS: uniqueModels([
+    transcriptionModel,
+    'gemini-4-hydrogen',
+    'gemini-3.8-flash',
+  ]),
+  EMBEDDING: embeddingModel,
+  RERANKER: rerankerModel,
 } as const;
 
 export interface AITelemetry {
   primaryModel: string;
+  carbonModel: string;
+  ttsModel: string;
+  ttsLiteModel: string;
+  transcriptionModel: string;
+  embeddingModel: string;
+  rerankerModel: string;
   activeModel: string;
   totalCalls: number;
   fallbackCount: number;
@@ -37,10 +114,17 @@ export interface AITelemetry {
 
 const telemetry: AITelemetry = {
   primaryModel: MODEL_REGISTRY.PRIMARY,
+  carbonModel: MODEL_REGISTRY.CARBON,
+  ttsModel: MODEL_REGISTRY.TTS,
+  ttsLiteModel: MODEL_REGISTRY.TTS_LITE,
+  transcriptionModel: MODEL_REGISTRY.TRANSCRIPTION,
+  embeddingModel: MODEL_REGISTRY.EMBEDDING,
+  rerankerModel: MODEL_REGISTRY.RERANKER,
   activeModel: MODEL_REGISTRY.PRIMARY,
   totalCalls: 0,
   fallbackCount: 0,
-  authStatus: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY ? 'api_key' : 'ok',
+  authStatus:
+    process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY ? 'api_key' : 'ok',
   avgLatencyMs: 0,
 };
 
@@ -48,7 +132,7 @@ export function getAITelemetry(): AITelemetry {
   return { ...telemetry };
 }
 
-// Module-level GoogleAuth singleton for REST calls (embeddings, reranker)
+// Module-level GoogleAuth singleton for REST calls (embeddings, reranker, TTS v1beta1)
 const auth = new GoogleAuth({
   scopes: ['https://www.googleapis.com/auth/cloud-platform'],
 });
@@ -66,6 +150,26 @@ export function getGenAIClient(): GoogleGenAI {
     }
   }
   return _aiClient;
+}
+
+/**
+ * Builds the canonical Vertex AI publisher model REST endpoint.
+ * Gemini 4 and Gemini 3.8 TTS models require the `global` endpoint (`aiplatform.googleapis.com`).
+ */
+export function getVertexEndpoint(
+  model: string,
+  action: 'generateContent' | 'predict' = 'generateContent',
+  apiVersion: 'v1' | 'v1beta1' = 'v1beta1',
+  overrideLocation?: string
+): string {
+  const targetProject =
+    project === 'sa-nexus-gcp-4-sandbox-183936' ? 'sa-learning-1' : project;
+  const effectiveLocation = overrideLocation || location || 'global';
+  const host =
+    effectiveLocation === 'global'
+      ? 'aiplatform.googleapis.com'
+      : `${effectiveLocation}-aiplatform.googleapis.com`;
+  return `https://${host}/${apiVersion}/projects/${targetProject}/locations/${effectiveLocation}/publishers/google/models/${model}:${action}`;
 }
 
 /**
@@ -95,17 +199,77 @@ export async function getAccessToken(): Promise<string> {
   throw new Error('Failed to obtain Google Cloud access token');
 }
 
+/**
+ * Normalizes GenerateContent config to satisfy Gemini 4 / Gemini 3.8 API invariants:
+ * - Gemini 4 counts thinking tokens inside `maxOutputTokens` (Hydrogen defaults to HIGH,
+ *   Carbon defaults to MEDIUM). We default Hydrogen to `LOW` thinking for fast structured
+ *   outputs and ensure `maxOutputTokens` is high enough (>= 4096 Hydrogen / >= 8192 Carbon)
+ *   so thinking tokens never starve final output.
+ * - Gemini 4 & 3.8 Flash reject `thinkingLevel: "MINIMAL"` and `thinkingBudget` with HTTP 400.
+ * - Gemini 4 Carbon supports `LOW | MEDIUM | HIGH` (clamps `XHIGH` -> `HIGH`).
+ * - Gemini 4 ignores `temperature`, `topP`, and `topK`; stripping them keeps requests clean.
+ */
+function normalizeConfigForModel(
+  model: string,
+  rawConfig?: any,
+  thinkingLevel?: ThinkingLevel
+): any {
+  const cfg: any = rawConfig ? { ...rawConfig } : {};
+  const isGemini4 = model.startsWith('gemini-4-');
+  const isCarbon = model.startsWith('gemini-4-carbon');
+  const isGemini38 = model.startsWith('gemini-3.8-');
+
+  if (isGemini4) {
+    delete cfg.temperature;
+    delete cfg.topP;
+    delete cfg.topK;
+
+    const existingThinking = cfg.thinkingConfig ? { ...cfg.thinkingConfig } : {};
+    delete existingThinking.thinkingBudget;
+
+    let resolvedLevel: string =
+      thinkingLevel ||
+      existingThinking.thinkingLevel ||
+      (isCarbon ? 'MEDIUM' : 'LOW');
+
+    if (resolvedLevel === 'MINIMAL') resolvedLevel = 'LOW';
+    if (isCarbon && resolvedLevel === 'XHIGH') resolvedLevel = 'HIGH';
+
+    cfg.thinkingConfig = {
+      ...existingThinking,
+      thinkingLevel: resolvedLevel,
+    };
+
+    const minOutputTokens = isCarbon ? 8192 : 4096;
+    if (
+      typeof cfg.maxOutputTokens === 'number' &&
+      cfg.maxOutputTokens < minOutputTokens
+    ) {
+      cfg.maxOutputTokens = minOutputTokens;
+    }
+  } else if (isGemini38) {
+    if (cfg.thinkingConfig) {
+      const tc = { ...cfg.thinkingConfig };
+      if (tc.thinkingLevel === 'MINIMAL') tc.thinkingLevel = 'LOW';
+      if (tc.thinkingLevel === 'XHIGH') tc.thinkingLevel = 'HIGH';
+      cfg.thinkingConfig = tc;
+    } else if (thinkingLevel) {
+      cfg.thinkingConfig = {
+        thinkingLevel: thinkingLevel === 'XHIGH' ? 'HIGH' : thinkingLevel,
+      };
+    }
+  }
+
+  return cfg;
+}
+
 async function generateViaRestApi(
   model: string,
   contents: any,
   config?: any
 ): Promise<string | null> {
   const token = await getAccessToken();
-  const targetProject = project === 'sa-nexus-gcp-4-sandbox-183936' ? 'sa-learning-1' : project;
-  const endpoint =
-    location === 'global'
-      ? `https://aiplatform.googleapis.com/v1/projects/${targetProject}/locations/global/publishers/google/models/${model}:generateContent`
-      : `https://${location}-aiplatform.googleapis.com/v1/projects/${targetProject}/locations/${location}/publishers/google/models/${model}:generateContent`;
+  const endpoint = getVertexEndpoint(model, 'generateContent', 'v1beta1');
 
   const formattedContents =
     typeof contents === 'string'
@@ -116,9 +280,25 @@ async function generateViaRestApi(
 
   const body: any = { contents: formattedContents };
   if (config) {
-    body.generationConfig = {};
-    if (config.temperature !== undefined) body.generationConfig.temperature = config.temperature;
-    if (config.responseMimeType) body.generationConfig.responseMimeType = config.responseMimeType;
+    const genCfg: any = {};
+    if (config.temperature !== undefined) genCfg.temperature = config.temperature;
+    if (config.topP !== undefined) genCfg.topP = config.topP;
+    if (config.topK !== undefined) genCfg.topK = config.topK;
+    if (config.maxOutputTokens !== undefined) {
+      genCfg.maxOutputTokens = config.maxOutputTokens;
+    }
+    if (config.responseMimeType) {
+      genCfg.responseMimeType = config.responseMimeType;
+    }
+    if (config.responseSchema) {
+      genCfg.responseSchema = config.responseSchema;
+    }
+    if (config.thinkingConfig) {
+      genCfg.thinkingConfig = config.thinkingConfig;
+    }
+    if (Object.keys(genCfg).length > 0) {
+      body.generationConfig = genCfg;
+    }
     if (config.systemInstruction) {
       body.systemInstruction =
         typeof config.systemInstruction === 'string'
@@ -138,75 +318,115 @@ async function generateViaRestApi(
 
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(`REST API ${res.status}: ${errText.slice(0, 120)}`);
+    throw new Error(`REST API ${res.status}: ${errText.slice(0, 160)}`);
   }
 
   const data = await res.json();
-  return data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
+  const parts: any[] = data?.candidates?.[0]?.content?.parts || [];
+  const text = parts
+    .filter((p) => typeof p?.text === 'string' && !p?.thought)
+    .map((p) => p.text)
+    .join('');
+  return text || null;
 }
 
 /**
- * Resilient content generation that defaults to `gemini-3.8-flash` and automatically
- * cascades through fallbacks if an endpoint returns 404/400 or auth error.
+ * Resilient content generation with dual-tier Gemini 4 routing:
+ * - `tier: 'hydrogen'` (default): `gemini-4-hydrogen` -> `gemini-3.8-flash` -> `gemini-3.5-flash`
+ * - `tier: 'carbon'`: `gemini-4-carbon` -> `gemini-4-hydrogen` -> `gemini-3.8-flash`
+ * Automatically applies Gemini 4 thinking/token safeguards and cascades on error.
  */
 export async function generateContentWithFallback(options: {
   contents: any;
   config?: any;
   preferredModel?: string;
+  tier?: ModelTier;
+  thinkingLevel?: ThinkingLevel;
 }): Promise<{ text: string; modelUsed: string }> {
   const start = Date.now();
   telemetry.totalCalls++;
 
+  const baseChain =
+    options.tier === 'carbon' ||
+    options.preferredModel === MODEL_REGISTRY.CARBON
+      ? MODEL_REGISTRY.CARBON_FALLBACKS
+      : MODEL_REGISTRY.FALLBACKS;
+
   const modelsToTry = options.preferredModel
-    ? [options.preferredModel, ...MODEL_REGISTRY.FALLBACKS.filter((m) => m !== options.preferredModel)]
-    : [...MODEL_REGISTRY.FALLBACKS];
+    ? uniqueModels([options.preferredModel, ...baseChain])
+    : [...baseChain];
 
   const ai = getGenAIClient();
   let lastError: any = null;
 
   for (let i = 0; i < modelsToTry.length; i++) {
     const model = modelsToTry[i];
+    const effectiveConfig = normalizeConfigForModel(
+      model,
+      options.config,
+      options.thinkingLevel
+    );
+
     try {
       const response = await ai.models.generateContent({
         model,
         contents: options.contents,
-        config: options.config,
+        config: effectiveConfig,
       });
 
       const text = response.text;
       if (text) {
         const elapsed = Date.now() - start;
         telemetry.avgLatencyMs = Math.round(
-          (telemetry.avgLatencyMs * (telemetry.totalCalls - 1) + elapsed) / telemetry.totalCalls
+          (telemetry.avgLatencyMs * (telemetry.totalCalls - 1) + elapsed) /
+            telemetry.totalCalls
         );
         telemetry.activeModel = model;
-        telemetry.authStatus = process.env.GEMINI_API_KEY ? 'api_key' : 'ok';
+        telemetry.authStatus =
+          process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
+            ? 'api_key'
+            : 'ok';
         if (i > 0) telemetry.fallbackCount++;
         return { text, modelUsed: model };
       }
+
+      lastError = new Error(`Model ${model} returned empty text response`);
+      console.warn(
+        `[vertex] Model ${model} returned empty text, trying fallback...`
+      );
     } catch (err: any) {
       lastError = err;
       const errMsg = String(err?.message || err);
+      telemetry.lastError = errMsg.slice(0, 160);
 
-      // If SDK failed due to ADC reauth (invalid_rapt), try REST API via gcloud CLI token
+      // If SDK failed due to ADC reauth (invalid_rapt), try v1beta1 REST API via gcloud CLI token
       if (errMsg.includes('invalid_rapt') || errMsg.includes('invalid_grant')) {
         try {
-          const restText = await generateViaRestApi(model, options.contents, options.config);
+          const restText = await generateViaRestApi(
+            model,
+            options.contents,
+            effectiveConfig
+          );
           if (restText) {
             const elapsed = Date.now() - start;
             telemetry.avgLatencyMs = Math.round(
-              (telemetry.avgLatencyMs * (telemetry.totalCalls - 1) + elapsed) / telemetry.totalCalls
+              (telemetry.avgLatencyMs * (telemetry.totalCalls - 1) + elapsed) /
+                telemetry.totalCalls
             );
             telemetry.activeModel = model;
             telemetry.authStatus = 'ok';
+            if (i > 0) telemetry.fallbackCount++;
             return { text: restText, modelUsed: model };
           }
         } catch (restErr: any) {
           lastError = restErr;
+          telemetry.lastError = String(restErr?.message || restErr).slice(0, 160);
         }
       }
 
-      console.warn(`[vertex] Model ${model} failed (${errMsg.slice(0, 80)}), trying fallback...`);
+      console.warn(
+        `[vertex] Model ${model} failed (${errMsg.slice(0, 100)}), trying fallback...`
+      );
     }
   }
 
@@ -215,9 +435,11 @@ export async function generateContentWithFallback(options: {
 
 /**
  * Generates embeddings in batches (up to 100 per API call) using Vertex AI text-embedding-004.
- * Replaces serial N+1 HTTP calls with single batched requests.
+ * Preserves 768-dim vector search compatibility across existing Cloud SQL and SQLite rows.
  */
-export async function getEmbeddingsBatch(texts: string[]): Promise<(number[] | null)[]> {
+export async function getEmbeddingsBatch(
+  texts: string[]
+): Promise<(number[] | null)[]> {
   if (texts.length === 0) return [];
   if (!project) {
     console.warn('[vertex] GOOGLE_CLOUD_PROJECT not set — skipping embeddings');
@@ -229,11 +451,7 @@ export async function getEmbeddingsBatch(texts: string[]): Promise<(number[] | n
 
   try {
     const token = await getAccessToken();
-    const targetProject = project === 'sa-nexus-gcp-4-sandbox-183936' ? 'sa-learning-1' : project;
-    const endpoint =
-      location === 'global'
-        ? `https://aiplatform.googleapis.com/v1/projects/${targetProject}/locations/global/publishers/google/models/${MODEL_REGISTRY.EMBEDDING}:predict`
-        : `https://${location}-aiplatform.googleapis.com/v1/projects/${targetProject}/locations/${location}/publishers/google/models/${MODEL_REGISTRY.EMBEDDING}:predict`;
+    const endpoint = getVertexEndpoint(MODEL_REGISTRY.EMBEDDING, 'predict', 'v1');
 
     for (let i = 0; i < texts.length; i += BATCH_SIZE) {
       const chunk = texts.slice(i, i + BATCH_SIZE);
@@ -249,7 +467,9 @@ export async function getEmbeddingsBatch(texts: string[]): Promise<(number[] | n
       });
 
       if (!response.ok) {
-        throw new Error(`Vertex AI batch embedding failed: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Vertex AI batch embedding failed: ${response.status} ${response.statusText}`
+        );
       }
 
       const data = await response.json();
@@ -264,7 +484,10 @@ export async function getEmbeddingsBatch(texts: string[]): Promise<(number[] | n
     if (errMsg.includes('invalid_rapt') || errMsg.includes('invalid_grant')) {
       telemetry.authStatus = 'reauth_needed';
     }
-    console.warn('[vertex] Batch embedding fallback (auth/network):', errMsg.slice(0, 120));
+    console.warn(
+      '[vertex] Batch embedding fallback (auth/network):',
+      errMsg.slice(0, 120)
+    );
     return texts.map(() => null);
   }
 }

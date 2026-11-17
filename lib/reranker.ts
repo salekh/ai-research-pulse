@@ -1,9 +1,92 @@
-import { getAccessToken, project } from '@/lib/vertex';
+import {
+  generateContentWithFallback,
+  getAccessToken,
+  MODEL_REGISTRY,
+  project,
+} from '@/lib/vertex';
 import { Article } from './db';
 
-export async function rerankArticles(query: string, articles: Article[]): Promise<Article[]> {
-  if (!project) {
-    console.warn('[reranker] Project ID not found, skipping rerank');
+/**
+ * Fallback semantic reranker powered by Gemini 4 Hydrogen (LOW thinking)
+ * when Vertex AI Discovery Engine Ranking API is unavailable or unconfigured.
+ */
+async function rerankWithGeminiHydrogen(
+  query: string,
+  articles: Article[]
+): Promise<Article[]> {
+  const candidates = articles.slice(0, 25);
+  const tail = articles.slice(25);
+
+  const prompt = `You are a high-precision technical AI research search reranker.
+Rank the candidate articles by technical relevance to the query.
+
+Query: "${query}"
+
+Candidates:
+${candidates
+  .map(
+    (a, idx) =>
+      `[${idx}] ${a.title} (${a.source}) — ${(a.snippet || '').slice(0, 180)}`
+  )
+  .join('\n')}
+
+Return JSON with this exact schema:
+{
+  "rankings": [
+    { "index": 0, "score": 0.95 }
+  ]
+}
+Include every relevant candidate index sorted from highest to lowest score (0.0 to 1.0).`;
+
+  const { text } = await generateContentWithFallback({
+    contents: prompt,
+    tier: 'hydrogen',
+    thinkingLevel: 'LOW',
+    config: {
+      maxOutputTokens: 4096,
+      responseMimeType: 'application/json',
+    },
+  });
+
+  const parsed = JSON.parse(text);
+  const rankings: Array<{ index: number; score: number }> = Array.isArray(
+    parsed?.rankings
+  )
+    ? parsed.rankings
+    : [];
+
+  if (rankings.length === 0) return articles;
+
+  const scoreByIdx = new Map<number, number>();
+  for (const r of rankings) {
+    if (
+      Number.isInteger(r?.index) &&
+      r.index >= 0 &&
+      r.index < candidates.length &&
+      typeof r?.score === 'number'
+    ) {
+      scoreByIdx.set(r.index, r.score);
+    }
+  }
+
+  const rerankedHead = candidates
+    .map((article, idx) => ({
+      ...article,
+      score: scoreByIdx.has(idx) ? scoreByIdx.get(idx) : article.score,
+    }))
+    .sort((a, b) => (b.score ?? -Infinity) - (a.score ?? -Infinity));
+
+  return [...rerankedHead, ...tail];
+}
+
+export async function rerankArticles(
+  query: string,
+  articles: Article[]
+): Promise<Article[]> {
+  if (!project || articles.length <= 1) {
+    if (!project) {
+      console.warn('[reranker] Project ID not found, skipping rerank');
+    }
     return articles;
   }
 
@@ -29,31 +112,42 @@ export async function rerankArticles(query: string, articles: Article[]): Promis
           records,
           topN: articles.length,
           ignoreRecordDetailsInResponse: true,
-          model: 'semantic-ranker-512@latest',
+          model: MODEL_REGISTRY.RERANKER,
         }),
-      },
+      }
     );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[reranker] API error:', errorText);
-      return articles; // Fallback to original order
+      console.warn(
+        `[reranker] Discovery Engine ${MODEL_REGISTRY.RERANKER} error (${response.status}): ${errorText.slice(0, 120)} — falling back to ${MODEL_REGISTRY.HYDROGEN}`
+      );
+      return await rerankWithGeminiHydrogen(query, articles);
     }
 
     const data = await response.json();
-    const rankedRecords: Array<{ id: string; score: number }> = data.records || [];
+    const rankedRecords: Array<{ id: string; score: number }> =
+      data.records || [];
 
     const scoreMap = new Map<string, number>(
       rankedRecords
         .filter((r) => r.id != null && r.score != null)
-        .map((r) => [r.id, r.score]),
+        .map((r) => [r.id, r.score])
     );
 
     return [...articles]
       .map((article) => ({ ...article, score: scoreMap.get(article.link) }))
       .sort((a, b) => (b.score ?? -Infinity) - (a.score ?? -Infinity));
   } catch (e) {
-    console.error('[reranker] Error reranking articles:', e);
-    return articles;
+    console.warn(
+      `[reranker] Discovery Engine rerank failed, trying ${MODEL_REGISTRY.HYDROGEN} fallback:`,
+      e
+    );
+    try {
+      return await rerankWithGeminiHydrogen(query, articles);
+    } catch (llmErr) {
+      console.error('[reranker] Gemini Hydrogen fallback also failed:', llmErr);
+      return articles;
+    }
   }
 }

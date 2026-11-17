@@ -11,10 +11,12 @@ import {
   ChevronDown,
   Zap,
   Cpu,
+  Layers,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import { CompanyLogo } from './company-logo';
+import { ArticleVisualDrawer } from './a2ui/ArticleVisualDrawer';
 
 interface Article {
   title: string;
@@ -42,6 +44,7 @@ interface NewsCardProps {
   article: Article;
   onSave?: (article: Article) => void;
   isSaved?: boolean;
+  onOpenVisualBrief?: (article: Article) => void;
 }
 
 const SOURCE_ACCENTS: Record<string, { from: string; to: string }> = {
@@ -56,8 +59,14 @@ const SOURCE_ACCENTS: Record<string, { from: string; to: string }> = {
   'Chinese Frontier': { from: '#DE2910', to: '#FFDE00' },
 };
 
-export function NewsCard({ article, onSave, isSaved = false }: NewsCardProps) {
+export function NewsCard({
+  article,
+  onSave,
+  isSaved = false,
+  onOpenVisualBrief,
+}: NewsCardProps) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [localDrawerOpen, setLocalDrawerOpen] = useState(false);
   const [summaryData, setSummaryData] = useState<{
     summary: string;
     keyInnovation?: string;
@@ -119,7 +128,7 @@ export function NewsCard({ article, onSave, isSaved = false }: NewsCardProps) {
         summary: data.summary,
         keyInnovation: data.keyInnovation,
         significance: data.significance,
-        modelUsed: data.modelUsed || 'gemini-3.8-flash',
+        modelUsed: data.modelUsed || 'gemini-4-hydrogen',
         cached: data.cached,
       });
     } catch (error) {
@@ -147,7 +156,7 @@ export function NewsCard({ article, onSave, isSaved = false }: NewsCardProps) {
         <div className="bg-[#E8F0FE] border-b border-[#DADCE0] py-2 px-5 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <Sparkles className="w-4 h-4 text-[#4471ED]" />
-            <span className="text-xs font-bold text-[#1967D2] font-mono tabular-nums">
+            <span className="text-xs font-mono font-normal text-[#1967D2] tabular-nums">
               {Math.round(article.score * 100)}% Semantic Match
             </span>
           </div>
@@ -215,7 +224,7 @@ export function NewsCard({ article, onSave, isSaved = false }: NewsCardProps) {
               {article.tags.slice(0, 4).map((tag, i) => (
                 <span
                   key={i}
-                  className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-mono font-medium bg-[#F8F9FA] text-[#202124] border border-[#DADCE0]"
+                  className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-mono font-normal bg-[#F8F9FA] text-[#202124] border border-[#DADCE0]"
                 >
                   {tag}
                 </span>
@@ -242,7 +251,7 @@ export function NewsCard({ article, onSave, isSaved = false }: NewsCardProps) {
                     </div>
                     {summaryData && (
                       <span className="text-xs font-mono px-2 py-0.5 rounded bg-[#E8F0FE] text-[#1967D2]">
-                        {summaryData.cached ? 'Cached · <2ms' : summaryData.modelUsed || 'gemini-3.8-flash'}
+                        {summaryData.cached ? 'Cached · <2ms' : summaryData.modelUsed || 'gemini-4-hydrogen'}
                       </span>
                     )}
                   </div>
@@ -250,13 +259,13 @@ export function NewsCard({ article, onSave, isSaved = false }: NewsCardProps) {
                   {isGenerating ? (
                     <div className="flex items-center gap-2 text-sm text-[#5F6368] py-2">
                       <Loader2 className="w-4 h-4 animate-spin text-[#4471ED]" />
-                      <span>Synthesizing technical contribution via Gemini 3.8 Flash…</span>
+                      <span>Synthesizing technical contribution via Gemini 4 Hydrogen…</span>
                     </div>
                   ) : summaryData ? (
                     <div className="space-y-2.5 text-sm">
                       {summaryData.keyInnovation && (
                         <div className="bg-white p-3 rounded border border-[#DADCE0]">
-                          <span className="font-bold text-[#4471ED] uppercase text-xs block mb-1 font-mono">
+                          <span className="font-display font-bold text-[#1967D2] uppercase text-xs block mb-1 tracking-wide">
                             Core Technical Innovation
                           </span>
                           <p className="text-[#202124] font-medium leading-snug">
@@ -277,40 +286,66 @@ export function NewsCard({ article, onSave, isSaved = false }: NewsCardProps) {
       </div>
 
       {/* Card Footer */}
-      <div className="px-5 py-3.5 flex justify-between items-center mt-auto border-t border-[#DADCE0]/70 bg-[#F8F9FA]/50">
+      <div className="px-4 py-3 flex justify-between items-center gap-2 mt-auto border-t border-[#DADCE0]/70 bg-[#F8F9FA]/50">
         <a
           href={article.link}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center text-sm font-semibold text-[#5F6368] hover:text-[#202124] transition-colors gap-1.5"
+          title="Read original paper"
+          className="inline-flex items-center text-xs font-semibold text-[#5F6368] hover:text-[#202124] transition-colors gap-1 whitespace-nowrap shrink-0 min-h-[34px]"
         >
-          <span>Read Paper</span>
-          <ExternalLink className="w-3.5 h-3.5" />
+          <span>Read</span>
+          <ExternalLink className="w-3.5 h-3.5 shrink-0" />
         </a>
 
-        <button
-          onClick={handleGenerateOverview}
-          className={`inline-flex items-center gap-1.5 text-sm font-semibold px-3.5 py-1.5 rounded-md transition-all cursor-pointer ${
-            isExpanded
-              ? 'bg-[#202124] text-white'
-              : summaryData
-              ? 'bg-[#E8F0FE] text-[#1967D2] hover:bg-[#d2e3fc]'
-              : 'bg-white text-[#202124] border border-[#DADCE0] hover:border-[#4471ED] hover:text-[#4471ED]'
-          }`}
-        >
-          {isGenerating ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : summaryData ? (
-            <Zap className="w-3.5 h-3.5 text-[#4471ED]" />
-          ) : (
-            <Sparkles className="w-3.5 h-3.5 text-[#4471ED]" />
-          )}
-          <span>
-            {isExpanded ? 'Hide Briefing' : summaryData ? 'Instant Briefing' : 'Summarize'}
-          </span>
-          {!isExpanded && <ChevronDown className="w-3.5 h-3.5" />}
-        </button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={handleGenerateOverview}
+            className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-md transition-all cursor-pointer whitespace-nowrap shrink-0 min-h-[34px] ${
+              isExpanded
+                ? 'bg-[#202124] text-white'
+                : summaryData
+                ? 'bg-[#E8F0FE] text-[#1967D2] hover:bg-[#D2E3FC]'
+                : 'bg-white text-[#202124] border border-[#DADCE0] hover:border-[#4471ED] hover:text-[#4471ED]'
+            }`}
+          >
+            {isGenerating ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+            ) : summaryData ? (
+              <Zap className="w-3.5 h-3.5 text-[#4471ED] shrink-0" />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5 text-[#4471ED] shrink-0" />
+            )}
+            <span>{isExpanded ? 'Hide' : summaryData ? 'Brief' : 'Summarize'}</span>
+            {!isExpanded && <ChevronDown className="w-3 h-3 shrink-0" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (onOpenVisualBrief) {
+                onOpenVisualBrief(article);
+              } else {
+                setLocalDrawerOpen(true);
+              }
+            }}
+            title="Open interactive A2UI 1.0 Visual Brief"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold font-display px-2.5 py-1.5 rounded-md bg-[#335CD6] hover:bg-[#274BB5] text-white shadow-xs transition-colors cursor-pointer whitespace-nowrap shrink-0 min-h-[34px]"
+          >
+            <Layers className="w-3.5 h-3.5 shrink-0" />
+            <span>Visual Brief</span>
+          </button>
+        </div>
       </div>
+
+      {!onOpenVisualBrief && (
+        <ArticleVisualDrawer
+          article={article}
+          isOpen={localDrawerOpen}
+          onClose={() => setLocalDrawerOpen(false)}
+        />
+      )}
     </div>
   );
 }

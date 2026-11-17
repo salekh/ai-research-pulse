@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateTranscript, synthesizeAudio } from '@/lib/audio-generator';
+import {
+  generateTranscriptWithModel,
+  synthesizeAudio,
+} from '@/lib/audio-generator';
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,26 +12,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No articles selected' }, { status: 400 });
     }
 
-    // Step 1: Generate Transcript
-    console.log("Generating transcript...");
-    const transcript = await generateTranscript(articles, type);
-    console.log("Transcript generated.");
+    const insightType = type === 'podcast' ? 'podcast' : 'overview';
 
-    // Step 2: Generate Audio
-    console.log("Generating audio...");
-    const { buffer: audioBuffer, modelUsed } = await synthesizeAudio(transcript, type);
-    console.log(`Audio generated via ${modelUsed}.`);
+    // Step 1: Generate Transcript (Carbon for podcast dialogue, Hydrogen for executive overview)
+    console.log(`[insights/generate] Generating ${insightType} transcript...`);
+    const { transcript, modelUsed: scriptModel } = await generateTranscriptWithModel(
+      articles,
+      insightType
+    );
+    console.log(`[insights/generate] Transcript generated via ${scriptModel}.`);
+
+    // Step 2: Synthesize Audio (gemini-3.8-flash-tts for podcast, gemini-3.8-flash-lite-tts for overview)
+    console.log(`[insights/generate] Synthesizing ${insightType} audio...`);
+    const { buffer: audioBuffer, modelUsed: ttsModel } = await synthesizeAudio(
+      transcript,
+      insightType
+    );
+    console.log(`[insights/generate] Audio generated via ${ttsModel} (${audioBuffer.length} bytes).`);
 
     return new NextResponse(new Blob([new Uint8Array(audioBuffer)]), {
-        headers: {
-            'Content-Type': 'audio/wav',
-            'Content-Length': audioBuffer.length.toString(),
-            'X-Model-Used': modelUsed,
-        }
+      headers: {
+        'Content-Type': 'audio/wav',
+        'Content-Length': audioBuffer.length.toString(),
+        'X-Model-Used': ttsModel,
+        'X-Script-Model': scriptModel,
+      },
     });
-
   } catch (error: any) {
-    console.error('Error generating insight:', error);
+    console.error('[insights/generate] Error generating insight:', error);
     return NextResponse.json(
       { error: error.message || 'Internal Server Error' },
       { status: 500 }

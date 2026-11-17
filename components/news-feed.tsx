@@ -28,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { CompanyLogo } from './company-logo';
+import { ArticleVisualDrawer } from './a2ui/ArticleVisualDrawer';
 
 interface Article {
   title: string;
@@ -82,6 +83,7 @@ export function NewsFeed({
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [meta, setMeta] = useState<{ engine?: string; totalIndexed?: number; model?: string }>({});
+  const [visualBriefArticle, setVisualBriefArticle] = useState<Article | null>(null);
 
   const timeRangeLabels: Record<string, string> = {
     '2w': '2 Weeks',
@@ -269,7 +271,7 @@ export function NewsFeed({
                     ) : (
                       <Filter className="w-4 h-4 text-[#5F6368]" />
                     )}
-                    <span>{labFilter || 'All 7 Labs'}</span>
+                    <span>{labFilter || `All ${ALL_LABS.length} Labs`}</span>
                     <ChevronDown className="w-3.5 h-3.5 text-[#5F6368]" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -377,6 +379,7 @@ export function NewsFeed({
                     article={article}
                     onSave={() => handleSaveArticle(article)}
                     isSaved={savedArticles.some((a) => a.link === article.link)}
+                    onOpenVisualBrief={(target) => setVisualBriefArticle(target)}
                   />
                 ))}
           </div>
@@ -427,12 +430,19 @@ export function NewsFeed({
                   article={article}
                   onSave={() => handleRemoveArticle(article)}
                   isSaved={true}
+                  onOpenVisualBrief={(target) => setVisualBriefArticle(target)}
                 />
               ))}
             </div>
           )}
         </TabsContent>
       </Tabs>
+
+      <ArticleVisualDrawer
+        article={visualBriefArticle}
+        isOpen={Boolean(visualBriefArticle)}
+        onClose={() => setVisualBriefArticle(null)}
+      />
     </div>
   );
 }
