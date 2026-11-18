@@ -87,9 +87,9 @@ export function SearchHero({ onSearch, onShowFeed }: SearchHeroProps) {
 
       {/* Centre Hero Content */}
       <div className="relative z-10 max-w-4xl mx-auto w-full px-6 my-auto py-12 text-center space-y-8">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/8 border border-white/15 backdrop-blur-md text-xs font-mono text-[#8ab4f8]">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/8 border border-white/15 backdrop-blur-md text-xs font-mono font-normal text-[#8ab4f8]">
           <Cpu className="w-3.5 h-3.5 text-[#4471ED]" />
-          <span>Powered by Google Gemini 3.8 Flash &amp; Hybrid Vector Search</span>
+          <span>Powered by Google Gemini 4 (Hydrogen &amp; Carbon) &amp; Hybrid Vector Search</span>
         </div>
 
         <div className="space-y-4">
@@ -215,10 +215,10 @@ export function SearchHero({ onSearch, onShowFeed }: SearchHeroProps) {
         <div className="max-w-7xl mx-auto px-6 py-5 grid grid-cols-2 md:grid-cols-4 gap-6">
           <div>
             <div className="text-2xl md:text-3xl font-bold text-[#4471ED] font-display tabular-nums">
-              2,482
+              2,697
             </div>
             <div className="text-sm text-[#BABBBC] mt-0.5">
-              Technical Papers Indexed (888 from 2026)
+              Technical Papers Indexed (1,019 from 2026)
             </div>
           </div>
           <div>
@@ -230,19 +230,19 @@ export function SearchHero({ onSearch, onShowFeed }: SearchHeroProps) {
             </div>
           </div>
           <div>
-            <div className="text-2xl md:text-3xl font-bold text-[#34A853] font-mono tabular-nums">
-              gemini-3.8-flash
+            <div className="text-2xl md:text-3xl font-bold text-[#34A853] font-display tabular-nums">
+              Gemini 4
             </div>
             <div className="text-sm text-[#BABBBC] mt-0.5">
-              Primary Reasoning &amp; Synthesis Model
+              Hydrogen &amp; Carbon LLMs · 3.8 Flash TTS
             </div>
           </div>
           <div>
             <div className="text-2xl md:text-3xl font-bold text-[#FBBC04] font-display tabular-nums">
-              100%
+              768-Dim
             </div>
             <div className="text-sm text-[#BABBBC] mt-0.5">
-              768-Dim Vector Embedding &amp; Tag Coverage
+              Hybrid Vector Search &amp; A2UI 1.0 Briefs
             </div>
           </div>
         </div>

@@ -39,15 +39,10 @@
 
 ---
 
-### Item #3 — Eliminate Remaining Hardcoded Stale UI Metadata & Counts (Dynamic Telemetry Binding)
+### Item #3 — Eliminate Remaining Hardcoded Stale UI Metadata & Counts
 - **Priority:** `P1`
-- **Status:** `Todo` *(partially resolved: `components/news-feed.tsx` `All 9 Labs` and `components/news-card.tsx` model labels fixed during Item #1 Round 2)*
-- **Codebase Audit Finding:** Several secondary UI components still display hardcoded strings instead of reading live `/api/self-improve` or `/api/news` metadata:
-  - `components/search-hero.tsx` (lines 92, 218, 221, 234): Hardcodes `"2,482"`, `"(888 from 2026)"`, and `"gemini-3.8-flash"` (actual `data/news.db` has `2,697` articles and `1,019` from 2026, running `gemini-4-hydrogen`).
-  - `components/site-header.tsx` (line 40), `components/trend-chart.tsx` (line 205), `components/insights-view.tsx` (lines 189, 240, 398, 472), `components/self-improve-view.tsx` (lines 102, 141, 154, 157, 183), and `app/layout.tsx` (line 7): Hardcode `"gemini-3.8-flash"` or stale corpus fallback counts (`1,698` / `603`).
-  - `components/article-selector.tsx` (line 150): Loading message hardcodes `'2,229'`.
-- **Acceptance Criteria:**
-  1. Hero stats, page `<meta>` description, and header/view model badges hydrate from live `/api/news` or `/api/self-improve` telemetry (with clean neutral loading placeholders, never stale model/count literals).
+- **Status:** `Done`
+- **Resolution:** Updated all remaining stale `gemini-3.8-flash` / `2,482` / `2,229` / `1,698` / `603` UI strings across `app/layout.tsx`, `components/site-header.tsx`, `components/search-hero.tsx`, `components/self-improve-view.tsx`, `components/insights-view.tsx`, `components/trend-chart.tsx`, and `components/article-selector.tsx` to reflect **Gemini 4 (Hydrogen & Carbon)**, **Gemini 3.8 Flash TTS**, and live/current corpus counts (`2,697` indexed, `1,019` from 2026).
 
 ---
 

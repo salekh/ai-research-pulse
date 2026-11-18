@@ -97,9 +97,9 @@ export function SelfImproveView() {
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#4471ED]/20 border border-[#4471ED]/40 text-[#8ab4f8] text-xs font-mono uppercase tracking-wider">
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#4471ED]/20 border border-[#4471ED]/40 text-[#8ab4f8] text-xs font-mono font-normal uppercase tracking-wider">
               <Cpu className="w-3.5 h-3.5" />
-              <span>Autonomous Optimization Loop · gemini-3.8-flash</span>
+              <span>Autonomous Optimization Loop · {aiTelemetry.carbonModel || 'gemini-4-carbon'}</span>
             </div>
             <h2 className="text-2xl md:text-3xl font-bold tracking-tight font-display">
               Recursive Self-Improvement Engine
@@ -134,14 +134,14 @@ export function SelfImproveView() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white border border-[#DADCE0] rounded-xl p-5 shadow-xs">
           <div className="flex items-center justify-between text-[#5F6368] text-xs font-semibold uppercase tracking-wider mb-2">
-            <span>Primary AI Model</span>
+            <span>Primary AI Models</span>
             <Cpu className="w-4 h-4 text-[#4471ED]" />
           </div>
-          <div className="text-xl font-bold text-[#202124] font-mono tabular-nums">
-            {aiTelemetry.primaryModel || 'gemini-3.8-flash'}
+          <div className="text-lg font-normal text-[#202124] font-mono tabular-nums">
+            {aiTelemetry.primaryModel || 'gemini-4-hydrogen'}
           </div>
           <div className="text-xs text-[#5F6368] mt-1">
-            Cascading fallback: <span className="text-[#34A853] font-medium">Armed</span>
+            Reasoning: <span className="font-mono text-[#202124]">{aiTelemetry.carbonModel || 'gemini-4-carbon'}</span> · Fallback: <span className="text-[#137333] font-medium">Armed</span>
           </div>
         </div>
 
@@ -151,10 +151,10 @@ export function SelfImproveView() {
             <Database className="w-4 h-4 text-[#4285F4]" />
           </div>
           <div className="text-2xl font-bold text-[#202124] font-display tabular-nums">
-            {dbStats.totalArticles?.toLocaleString() || '1,698'}
+            {dbStats.totalArticles?.toLocaleString() || '2,697'}
           </div>
           <div className="text-xs text-[#5F6368] mt-1">
-            2026 Articles: <span className="font-mono font-bold text-[#4471ED]">{dbStats.articles2026Count ?? 603}</span> · Engine: <span className="font-mono text-[#202124]">{dbStats.engine || '3-tier'}</span>
+            2026 Articles: <span className="font-mono text-[#1967D2]">{dbStats.articles2026Count ?? 1019}</span> · Engine: <span className="font-mono text-[#202124]">{dbStats.engine || '3-tier'}</span>
           </div>
         </div>
 
@@ -163,7 +163,7 @@ export function SelfImproveView() {
             <span>Zero-Loss GCS Archive</span>
             <Layers className="w-4 h-4 text-[#34A853]" />
           </div>
-          <div className="text-xl font-bold text-[#34A853] font-display tabular-nums">
+          <div className="text-xl font-bold text-[#137333] font-display tabular-nums">
             11-Nines Durable
           </div>
           <div className="text-xs text-[#5F6368] mt-1 truncate" title={dbStats.gcsArchiveStatus}>
@@ -180,7 +180,7 @@ export function SelfImproveView() {
             {tagCoveragePct}% <span className="text-xs font-normal text-[#5F6368]">768-dim</span>
           </div>
           <div className="text-xs text-[#5F6368] mt-1">
-            {dbStats.embeddedArticles || 1698} embedded · {dbStats.taggedArticles || 1698} tagged
+            {(dbStats.embeddedArticles ?? 2589).toLocaleString()} embedded · {(dbStats.taggedArticles ?? 2697).toLocaleString()} tagged
           </div>
         </div>
       </div>

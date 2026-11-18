@@ -35,9 +35,9 @@ export function SiteHeader({ onResetView }: { onResetView?: () => void }) {
 
         {/* Right: Active Model Badge + Google Cloud Lockup + Profile */}
         <div className="flex items-center gap-4">
-          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#303134] border border-[#5F6368]/40 text-xs font-mono text-[#8ab4f8]">
+          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#303134] border border-[#5F6368]/40 text-xs font-mono font-normal text-[#8ab4f8]">
             <Cpu className="w-3.5 h-3.5 text-[#4471ED]" />
-            <span>gemini-3.8-flash</span>
+            <span>gemini-4-hydrogen · carbon</span>
           </div>
 
           <img

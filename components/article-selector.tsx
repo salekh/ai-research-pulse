@@ -89,7 +89,7 @@ export function ArticleSelector({ onGenerate, isGenerating }: ArticleSelectorPro
     return counts;
   }, [articles]);
 
-  // Filtered articles across all 2,229 items in memory
+  // Filtered articles across the full catalog in memory
   const filteredArticles = useMemo(() => {
     const q = titleQuery.trim().toLowerCase();
     return articles.filter((a) => {
@@ -147,7 +147,7 @@ export function ArticleSelector({ onGenerate, isGenerating }: ArticleSelectorPro
       <div className="flex flex-col items-center justify-center py-12 gap-2">
         <Loader2 className="h-6 w-6 animate-spin text-[#4471ED]" />
         <p className="text-xs text-[#5F6368]">
-          Loading full publication catalog ({articles.length || '2,229'} papers)…
+          Loading full publication catalog ({articles.length ? `${articles.length.toLocaleString()} papers` : '2,697+ papers'})…
         </p>
       </div>
     );

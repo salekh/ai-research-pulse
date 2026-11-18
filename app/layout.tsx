@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Research Pulse | Google Cloud AI Tech Group",
   description:
-    "Frontier AI research aggregator, cross-lab trend synthesizer, and recursive self-improvement engine powered by Gemini 3.8 Flash.",
+    "Frontier AI research aggregator, cross-lab trend synthesizer, A2UI 1.0 visual brief engine, and recursive self-improvement platform powered by Gemini 4 (Hydrogen & Carbon) and Gemini 3.8 Speech.",
 };
 
 export default function RootLayout({

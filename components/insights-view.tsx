@@ -186,7 +186,7 @@ function AudioPlayerCard({
             ) : (
               <Sparkles className="w-3 h-3" />
             )}
-            <span>{isTranscribing ? 'Transcribing…' : 'Multimodal Transcribe (3.8 Flash)'}</span>
+            <span>{isTranscribing ? 'Transcribing…' : 'Multimodal Transcribe (Gemini 4 Hydrogen)'}</span>
           </button>
         </div>
 
@@ -237,8 +237,8 @@ function GenerationProgress({
   step: 'selecting' | 'transcript' | 'audio' | 'done';
 }) {
   const steps = [
-    { key: 'transcript', label: 'Drafting Script (gemini-3.8-flash)', icon: Mic },
-    { key: 'audio', label: 'Synthesizing Audio (Gemini TTS)', icon: Volume2 },
+    { key: 'transcript', label: 'Drafting Script (gemini-4-carbon / hydrogen)', icon: Mic },
+    { key: 'audio', label: 'Synthesizing Audio (gemini-3.8-flash-tts)', icon: Volume2 },
     { key: 'done', label: 'Complete', icon: Sparkles },
   ];
 
@@ -386,16 +386,16 @@ export function InsightsView() {
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-[#4471ED]/20 border border-[#4471ED]/40 text-[#8ab4f8] text-xs font-mono uppercase">
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-[#4471ED]/20 border border-[#4471ED]/40 text-[#8ab4f8] text-xs font-mono font-normal uppercase">
               <Headphones className="w-3.5 h-3.5" />
-              <span>Multi-Speaker Audio Synthesis · Gemini TTS</span>
+              <span>Multi-Speaker Audio Synthesis · Gemini 3.8 Flash TTS</span>
             </div>
             <h2 className="text-2xl font-bold font-display">
               Research Pulse Audio Briefings &amp; Podcasts
             </h2>
             <p className="text-sm text-[#BABBBC] max-w-2xl">
               Listen to this week&apos;s executive AI research briefing or a deep-dive technical
-              podcast featuring hosts Dr. Anya &amp; Liam, scripted by Gemini 3.8 Flash.
+              podcast featuring hosts Dr. Anya &amp; Liam, scripted by Gemini 4 Carbon &amp; Hydrogen.
             </p>
           </div>
         </div>
@@ -469,8 +469,8 @@ export function InsightsView() {
                   <Loader2 className="w-8 h-8 text-[#4471ED] animate-spin mx-auto mb-3" />
                   <p className="text-sm font-bold text-[#202124] font-display">
                     {genStep === 'transcript'
-                      ? 'Drafting script with Gemini 3.8 Flash…'
-                      : 'Synthesizing multi-speaker audio…'}
+                      ? 'Drafting script with Gemini 4…'
+                      : 'Synthesizing multi-speaker audio with Gemini 3.8 Flash TTS…'}
                   </p>
                   <GenerationProgress step={genStep} />
                 </CardContent>
@@ -490,7 +490,7 @@ export function InsightsView() {
                         Custom Audio Ready
                       </h4>
                       <p className="text-[10px] font-mono text-[#5F6368] uppercase">
-                        Synthesized via Gemini TTS
+                        Synthesized via Gemini 3.8 Flash TTS
                       </p>
                     </div>
                   </div>
