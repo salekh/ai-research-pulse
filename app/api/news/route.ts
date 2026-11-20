@@ -43,12 +43,21 @@ export async function GET(request: Request) {
     }
 
     let articles: Article[];
+    let searchMode: 'feed' | 'hybrid' | 'lexical' = 'feed';
 
     if (query && query.trim()) {
       const queryEmbedding = await getEmbedding(query);
-      articles = await searchArticlesHybrid(query, queryEmbedding, limit, sourceFilter);
-      if (queryEmbedding && articles.length > 1) {
-        articles = await rerankArticles(query, articles);
+      searchMode = queryEmbedding ? 'hybrid' : 'lexical';
+      articles = await searchArticlesHybrid(
+        query,
+        queryEmbedding,
+        limit,
+        sourceFilter,
+        startDate,
+        offset
+      );
+      if (queryEmbedding && page === 1 && articles.length > 1) {
+        articles = await rerankArticles(query, articles, { allowLlmFallback: false });
       }
     } else {
       articles = await getArticles(limit, startDate, offset, sourceFilter);
@@ -68,6 +77,7 @@ export async function GET(request: Request) {
         engine: stats.engine,
         totalIndexed: stats.totalArticles,
         model: telemetry.activeModel,
+        searchMode,
       },
     });
   } catch (error) {

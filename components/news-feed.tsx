@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NewsCard } from './news-card';
 import { TrendChart } from './trend-chart';
 import { InsightsView } from './insights-view';
@@ -77,13 +77,16 @@ export function NewsFeed({
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [labFilter, setLabFilter] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState(initialQuery);
+  const [inputQuery, setInputQuery] = useState(initialQuery);
+  const [activeQuery, setActiveQuery] = useState(initialQuery);
   const [activeTab, setActiveTab] = useState(initialTab);
   const [timeRange, setTimeRange] = useState('all');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [meta, setMeta] = useState<{ engine?: string; totalIndexed?: number; model?: string }>({});
   const [visualBriefArticle, setVisualBriefArticle] = useState<Article | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const requestSeqRef = useRef(0);
 
   const timeRangeLabels: Record<string, string> = {
     '2w': '2 Weeks',
@@ -99,10 +102,30 @@ export function NewsFeed({
     } catch {}
   }, []);
 
+  // Sync prop changes from parent hero search
+  useEffect(() => {
+    setInputQuery(initialQuery);
+    setActiveQuery(initialQuery);
+  }, [initialQuery]);
+
+  // Debounced live search when typing in the feed search box
+  useEffect(() => {
+    const trimmed = inputQuery.trim();
+    if (trimmed === activeQuery) return;
+    const timer = setTimeout(() => {
+      setActiveQuery(trimmed);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [inputQuery, activeQuery]);
+
+  // Execute search / feed fetch whenever activeQuery, timeRange, or labFilter changes
   useEffect(() => {
     setPage(1);
-    fetchNews(searchQuery, false, timeRange, 1, labFilter);
-  }, [timeRange, labFilter]);
+    fetchNews(activeQuery, false, timeRange, 1, labFilter);
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, [activeQuery, timeRange, labFilter]);
 
   const fetchNews = async (
     query = '',
@@ -111,6 +134,11 @@ export function NewsFeed({
     pageNum = 1,
     source = labFilter
   ) => {
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const seq = ++requestSeqRef.current;
+
     if (refresh) setRefreshing(true);
     else if (pageNum === 1) setLoading(true);
     setError(null);
@@ -124,42 +152,59 @@ export function NewsFeed({
       params.append('page', pageNum.toString());
       params.append('limit', '30');
 
-      const res = await fetch(`/api/news?${params.toString()}`);
+      const res = await fetch(`/api/news?${params.toString()}`, {
+        signal: controller.signal,
+      });
       if (!res.ok) throw new Error('Failed to fetch news');
       const data = await res.json();
+
+      // Ignore stale responses if a newer search started
+      if (seq !== requestSeqRef.current) return;
 
       if (pageNum === 1) {
         setArticles(data.articles || []);
       } else {
-        setArticles((prev) => [...prev, ...(data.articles || [])]);
+        setArticles((prev) => {
+          const seen = new Set(prev.map((a) => a.link));
+          const uniqueNext = (data.articles || []).filter((a: Article) => !seen.has(a.link));
+          return [...prev, ...uniqueNext];
+        });
       }
       setHasMore(Boolean(data.hasMore));
       if (data.meta) setMeta(data.meta);
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+      if (seq !== requestSeqRef.current) return;
       console.error(err);
       setError('Failed to load publications.');
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (seq === requestSeqRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   };
 
   const handleLoadMore = () => {
     const nextPage = page + 1;
     setPage(nextPage);
-    fetchNews(searchQuery, false, timeRange, nextPage, labFilter);
+    fetchNews(activeQuery, false, timeRange, nextPage, labFilter);
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setPage(1);
-    fetchNews(searchQuery, false, timeRange, 1, labFilter);
+    const trimmed = inputQuery.trim();
+    if (trimmed !== activeQuery) {
+      setActiveQuery(trimmed);
+    } else {
+      setPage(1);
+      fetchNews(trimmed, false, timeRange, 1, labFilter);
+    }
   };
 
   const handleClearSearch = () => {
-    setSearchQuery('');
-    setPage(1);
-    fetchNews('', false, timeRange, 1, labFilter);
+    setInputQuery('');
+    setActiveQuery('');
   };
 
   const handleSaveArticle = (article: Article) => {
@@ -293,31 +338,38 @@ export function NewsFeed({
               </DropdownMenu>
 
               {/* Search Input */}
-              <form onSubmit={handleSearchSubmit} className="relative flex-1 sm:w-72">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#5F6368] w-4 h-4" />
+              <form onSubmit={handleSearchSubmit} className="relative flex items-center flex-1 sm:w-80">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#5F6368] w-4 h-4 pointer-events-none" />
                 <Input
                   type="text"
                   placeholder="Semantic or keyword search…"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-10 pl-10 pr-8 text-sm rounded-lg border-[#DADCE0] bg-white focus:border-[#4471ED]"
+                  value={inputQuery}
+                  onChange={(e) => setInputQuery(e.target.value)}
+                  className="h-10 pl-10 pr-20 text-sm rounded-lg border-[#DADCE0] bg-white focus:border-[#4471ED]"
                 />
-                {searchQuery && (
+                {inputQuery && (
                   <button
                     type="button"
                     onClick={handleClearSearch}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#5F6368] hover:text-[#202124] cursor-pointer"
+                    aria-label="Clear search"
+                    className="absolute right-14 top-1/2 -translate-y-1/2 p-1 text-[#5F6368] hover:text-[#202124] cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 )}
+                <button
+                  type="submit"
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 px-2.5 rounded-md bg-[#335CD6] hover:bg-[#274BB5] text-white text-xs font-semibold cursor-pointer transition-colors"
+                >
+                  Go
+                </button>
               </form>
 
               {/* Non-blocking Refresh Button */}
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => fetchNews(searchQuery, true, timeRange, 1, labFilter)}
+                onClick={() => fetchNews(activeQuery, true, timeRange, 1, labFilter)}
                 disabled={refreshing}
                 title="Refresh RSS Feeds (background)"
                 className="h-10 w-10 rounded-lg border-[#DADCE0] bg-white hover:border-[#4471ED] cursor-pointer"
@@ -331,23 +383,25 @@ export function NewsFeed({
         </div>
 
         {/* Active Search / Filter Banner */}
-        {activeTab === 'feed' && (searchQuery || labFilter) && (
+        {activeTab === 'feed' && (activeQuery || labFilter) && (
           <div className="flex items-center justify-between bg-[#E8F0FE] border border-[#4471ED]/30 rounded-lg px-4 py-2.5 text-sm">
             <div className="flex items-center gap-2 text-[#1967D2] font-medium">
               <span>
-                Showing results
-                {searchQuery ? ` matching "${searchQuery}"` : ''}
+                {loading && page === 1 ? 'Searching' : 'Showing results'}
+                {activeQuery ? ` matching "${activeQuery}"` : ''}
                 {labFilter ? ` from ${labFilter}` : ''}
               </span>
-              <span className="font-mono font-bold tabular-nums">
-                ({articles.length} papers)
-              </span>
+              {!(loading && page === 1) && (
+                <span className="font-mono font-normal tabular-nums">
+                  ({articles.length} {articles.length === 1 ? 'paper' : 'papers'})
+                </span>
+              )}
             </div>
             <button
               onClick={() => {
-                setSearchQuery('');
+                setInputQuery('');
+                setActiveQuery('');
                 setLabFilter(null);
-                fetchNews('', false, timeRange, 1, null);
               }}
               className="text-xs font-semibold text-[#1967D2] hover:underline cursor-pointer"
             >
@@ -364,25 +418,51 @@ export function NewsFeed({
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {loading && page === 1
-              ? Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="space-y-3 bg-white border border-[#DADCE0] rounded-xl p-5">
-                    <Skeleton className="h-4 w-1/3" />
-                    <Skeleton className="h-6 w-full" />
-                    <Skeleton className="h-16 w-full" />
-                  </div>
-                ))
-              : articles.map((article, i) => (
-                  <NewsCard
-                    key={`${article.link}-${i}`}
-                    article={article}
-                    onSave={() => handleSaveArticle(article)}
-                    isSaved={savedArticles.some((a) => a.link === article.link)}
-                    onOpenVisualBrief={(target) => setVisualBriefArticle(target)}
-                  />
-                ))}
-          </div>
+          {!loading && articles.length === 0 && !error ? (
+            <div className="text-center py-16 bg-white border border-[#DADCE0] rounded-xl text-[#5F6368] space-y-3">
+              <Search className="w-10 h-10 mx-auto opacity-30" />
+              <p className="text-base font-bold text-[#202124] font-display">
+                No matching publications found
+              </p>
+              <p className="text-sm max-w-md mx-auto">
+                {activeQuery
+                  ? `No research articles matched "${activeQuery}"${labFilter ? ` in ${labFilter}` : ''}. Try broader keywords or reset filters.`
+                  : 'No articles matched your active filters.'}
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setInputQuery('');
+                  setActiveQuery('');
+                  setLabFilter(null);
+                  setTimeRange('all');
+                }}
+                className="rounded-lg px-4 py-2 text-xs font-semibold border-[#DADCE0] bg-white hover:border-[#4471ED] text-[#202124] cursor-pointer"
+              >
+                Reset search &amp; filters
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {loading && page === 1
+                ? Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="space-y-3 bg-white border border-[#DADCE0] rounded-xl p-5">
+                      <Skeleton className="h-4 w-1/3" />
+                      <Skeleton className="h-6 w-full" />
+                      <Skeleton className="h-16 w-full" />
+                    </div>
+                  ))
+                : articles.map((article, i) => (
+                    <NewsCard
+                      key={`${article.link}-${i}`}
+                      article={article}
+                      onSave={() => handleSaveArticle(article)}
+                      isSaved={savedArticles.some((a) => a.link === article.link)}
+                      onOpenVisualBrief={(target) => setVisualBriefArticle(target)}
+                    />
+                  ))}
+            </div>
+          )}
 
           {hasMore && !loading && (
             <div className="flex justify-center pt-6">

@@ -18,6 +18,7 @@ export default function Home() {
   };
 
   const handleShowFeed = (tab = 'feed') => {
+    setInitialQuery('');
     setInitialTab(tab);
     setShowFeed(true);
   };
@@ -31,7 +32,12 @@ export default function Home() {
         </>
       ) : (
         <div className="flex flex-col flex-1 animate-in fade-in duration-300">
-          <SiteHeader onResetView={() => setShowFeed(false)} />
+          <SiteHeader
+            onResetView={() => {
+              setInitialQuery('');
+              setShowFeed(false);
+            }}
+          />
           <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
             <NewsFeed initialQuery={initialQuery} initialTab={initialTab} />
           </div>

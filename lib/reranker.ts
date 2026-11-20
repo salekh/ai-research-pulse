@@ -79,13 +79,32 @@ Include every relevant candidate index sorted from highest to lowest score (0.0 
   return [...rerankedHead, ...tail];
 }
 
+// Circuit breaker so a 403/401/404 from Discovery Engine doesn't add latency on every search
+let discoveryEngineCooldownUntil = 0;
+const DISCOVERY_ENGINE_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
+
 export async function rerankArticles(
   query: string,
-  articles: Article[]
+  articles: Article[],
+  options?: { allowLlmFallback?: boolean }
 ): Promise<Article[]> {
   if (!project || articles.length <= 1) {
     if (!project) {
       console.warn('[reranker] Project ID not found, skipping rerank');
+    }
+    return articles;
+  }
+
+  const allowLlmFallback = options?.allowLlmFallback ?? false;
+
+  // Fast path: if Discovery Engine recently denied permission, immediately keep hybrid DB scores
+  if (Date.now() < discoveryEngineCooldownUntil) {
+    if (allowLlmFallback) {
+      try {
+        return await rerankWithGeminiHydrogen(query, articles);
+      } catch {
+        return articles;
+      }
     }
     return articles;
   }
@@ -107,6 +126,7 @@ export async function rerankArticles(
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        signal: AbortSignal.timeout(1500),
         body: JSON.stringify({
           query,
           records,
@@ -119,10 +139,16 @@ export async function rerankArticles(
 
     if (!response.ok) {
       const errorText = await response.text();
+      if (response.status === 401 || response.status === 403 || response.status === 404) {
+        discoveryEngineCooldownUntil = Date.now() + DISCOVERY_ENGINE_COOLDOWN_MS;
+      }
       console.warn(
-        `[reranker] Discovery Engine ${MODEL_REGISTRY.RERANKER} error (${response.status}): ${errorText.slice(0, 120)} — falling back to ${MODEL_REGISTRY.HYDROGEN}`
+        `[reranker] Discovery Engine ${MODEL_REGISTRY.RERANKER} error (${response.status}): ${errorText.slice(0, 120)} — using fast hybrid scores`
       );
-      return await rerankWithGeminiHydrogen(query, articles);
+      if (allowLlmFallback) {
+        return await rerankWithGeminiHydrogen(query, articles);
+      }
+      return articles;
     }
 
     const data = await response.json();
@@ -136,18 +162,17 @@ export async function rerankArticles(
     );
 
     return [...articles]
-      .map((article) => ({ ...article, score: scoreMap.get(article.link) }))
+      .map((article) => ({ ...article, score: scoreMap.get(article.link) ?? article.score }))
       .sort((a, b) => (b.score ?? -Infinity) - (a.score ?? -Infinity));
   } catch (e) {
-    console.warn(
-      `[reranker] Discovery Engine rerank failed, trying ${MODEL_REGISTRY.HYDROGEN} fallback:`,
-      e
-    );
-    try {
-      return await rerankWithGeminiHydrogen(query, articles);
-    } catch (llmErr) {
-      console.error('[reranker] Gemini Hydrogen fallback also failed:', llmErr);
-      return articles;
+    console.warn('[reranker] Discovery Engine rerank failed, using fast hybrid scores:', e);
+    if (allowLlmFallback) {
+      try {
+        return await rerankWithGeminiHydrogen(query, articles);
+      } catch (llmErr) {
+        console.error('[reranker] Gemini Hydrogen fallback also failed:', llmErr);
+      }
     }
+    return articles;
   }
 }

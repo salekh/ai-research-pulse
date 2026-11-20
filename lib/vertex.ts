@@ -438,7 +438,8 @@ export async function generateContentWithFallback(options: {
  * Preserves 768-dim vector search compatibility across existing Cloud SQL and SQLite rows.
  */
 export async function getEmbeddingsBatch(
-  texts: string[]
+  texts: string[],
+  timeoutMs = 8000
 ): Promise<(number[] | null)[]> {
   if (texts.length === 0) return [];
   if (!project) {
@@ -461,6 +462,7 @@ export async function getEmbeddingsBatch(
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        signal: AbortSignal.timeout(timeoutMs),
         body: JSON.stringify({
           instances: chunk.map((t) => ({ content: t.slice(0, 6000) })),
         }),
@@ -492,10 +494,33 @@ export async function getEmbeddingsBatch(
   }
 }
 
+// Lightweight in-memory LRU cache for search query embeddings (eliminates repeat RPC latency)
+const queryEmbeddingCache = new Map<string, { vec: number[]; ts: number }>();
+const EMBEDDING_CACHE_MAX = 250;
+const EMBEDDING_CACHE_TTL_MS = 30 * 60 * 1000;
+
 /**
- * Single text embedding helper (delegates to batch).
+ * Single text embedding helper with fast LRU cache & tight search timeout.
  */
 export async function getEmbedding(text: string): Promise<number[] | null> {
-  const [res] = await getEmbeddingsBatch([text]);
+  const key = text.trim().toLowerCase();
+  if (!key) return null;
+
+  const cached = queryEmbeddingCache.get(key);
+  if (cached && Date.now() - cached.ts < EMBEDDING_CACHE_TTL_MS) {
+    // Refresh LRU order
+    queryEmbeddingCache.delete(key);
+    queryEmbeddingCache.set(key, cached);
+    return cached.vec;
+  }
+
+  const [res] = await getEmbeddingsBatch([text], 2500);
+  if (res) {
+    if (queryEmbeddingCache.size >= EMBEDDING_CACHE_MAX) {
+      const oldestKey = queryEmbeddingCache.keys().next().value;
+      if (oldestKey) queryEmbeddingCache.delete(oldestKey);
+    }
+    queryEmbeddingCache.set(key, { vec: res, ts: Date.now() });
+  }
   return res ?? null;
 }

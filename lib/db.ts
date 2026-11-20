@@ -526,48 +526,137 @@ export async function getArticles(
 }
 
 // ---------------------------------------------------------------------------
-// searchArticlesHybrid — Combines Vector Search + Lexical BM25-style ranking
-// Works even when embeddings are partial or offline
+// searchArticlesHybrid — True Hybrid Search (Vector + Lexical Full-Text + Exact Match)
+// Works across ALL articles (including newly ingested unembedded rows), supports
+// timeRange (startDate), lab filter (sourceFilter), relevance floor, and pagination.
 // ---------------------------------------------------------------------------
+function escapeLike(str: string): string {
+  return str.replace(/[%_\\]/g, '\\$&');
+}
+
 export async function searchArticlesHybrid(
   query: string,
   queryEmbedding: number[] | null,
   limit = 50,
-  sourceFilter?: string
+  sourceFilter?: string,
+  startDate?: Date,
+  offset = 0
 ): Promise<Article[]> {
   const cleanQuery = query.trim().toLowerCase();
-  const terms = cleanQuery.split(/\s+/).filter((t) => t.length > 1);
+  const terms = cleanQuery
+    .split(/\s+/)
+    .map((t) => t.replace(/^[^\w]+|[^\w]+$/g, ''))
+    .filter((t) => t.length > 1)
+    .slice(0, 6);
 
-  if (queryEmbedding && (await isPostgresAvailable())) {
+  if (await isPostgresAvailable()) {
     try {
       const pool = getPgPool();
-      const params: any[] = [JSON.stringify(queryEmbedding), limit];
-      const sourceCond = sourceFilter ? `AND source = $3` : '';
-      if (sourceFilter) params.push(sourceFilter);
+      const params: any[] = [];
+      const addParam = (val: any): string => {
+        params.push(val);
+        return `$${params.length}`;
+      };
+
+      const whereFilters: string[] = [];
+      if (sourceFilter) {
+        whereFilters.push(`source = ${addParam(sourceFilter)}`);
+      }
+      if (startDate) {
+        whereFilters.push(`date >= ${addParam(startDate.toISOString())}`);
+      }
+
+      const filterSql = whereFilters.length > 0 ? `WHERE ${whereFilters.join(' AND ')}` : '';
+
+      // Vector similarity component (0 when embedding is missing or queryEmbedding is null)
+      let vecExpr = '0.0::double precision';
+      if (queryEmbedding) {
+        const vecParam = addParam(JSON.stringify(queryEmbedding));
+        vecExpr = `CASE WHEN embedding IS NOT NULL THEN GREATEST(0.0, 1.0 - (embedding <=> ${vecParam}::vector)) ELSE 0.0 END`;
+      }
+
+      // Lexical & full-text component (catches exact matches, stems, acronyms, and unembedded rows)
+      let lexExpr = '0.0::double precision';
+      if (cleanQuery) {
+        const qParam = addParam(cleanQuery);
+        const phraseLike = addParam(`%${escapeLike(cleanQuery)}%`);
+        const lexParts: string[] = [
+          `CASE WHEN title ILIKE ${phraseLike} ESCAPE '\\' THEN 0.45 ELSE 0.0 END`,
+          `CASE WHEN tags ILIKE ${phraseLike} ESCAPE '\\' THEN 0.30 ELSE 0.0 END`,
+          `CASE WHEN snippet ILIKE ${phraseLike} ESCAPE '\\' THEN 0.18 ELSE 0.0 END`,
+          `CASE WHEN source ILIKE ${phraseLike} ESCAPE '\\' THEN 0.20 ELSE 0.0 END`,
+          `LEAST(0.40, COALESCE(ts_rank_cd(to_tsvector('english', COALESCE(title, '') || ' ' || COALESCE(tags, '') || ' ' || COALESCE(snippet, '')), plainto_tsquery('english', ${qParam})), 0.0) * 0.8)`,
+        ];
+
+        for (const term of terms) {
+          const termLike = addParam(`%${escapeLike(term)}%`);
+          lexParts.push(
+            `(CASE WHEN title ILIKE ${termLike} ESCAPE '\\' THEN 0.16 WHEN tags ILIKE ${termLike} ESCAPE '\\' THEN 0.10 WHEN snippet ILIKE ${termLike} ESCAPE '\\' THEN 0.05 ELSE 0.0 END)`
+          );
+        }
+        lexExpr = `(${lexParts.join(' + ')})`;
+      }
+
+      const limitParam = addParam(limit);
+      const offsetParam = addParam(offset);
+
+      // Combine vector + lexical scores cleanly; enforce relevance floor so nonsense queries return 0 rows
+      const combinedExpr = queryEmbedding
+        ? `LEAST(0.99, (vec_score * 0.62) + lex_score)`
+        : `LEAST(0.99, lex_score)`;
+      const relevanceGate = cleanQuery
+        ? `WHERE (lex_score > 0.0 OR vec_score >= 0.56)`
+        : `WHERE vec_score >= 0.30`;
 
       const res = await pool.query(
-        `SELECT title, link, date, source, snippet, tags, summary, key_innovation, significance,
-                1 - (embedding <=> $1) AS score
-         FROM articles
-         WHERE embedding IS NOT NULL ${sourceCond}
-         ORDER BY embedding <=> $1 ASC
-         LIMIT $2`,
+        `WITH scored AS (
+           SELECT
+             title, link, date, source, snippet, tags, summary, key_innovation, significance,
+             ${vecExpr} AS vec_score,
+             ${lexExpr} AS lex_score
+           FROM articles
+           ${filterSql}
+         ),
+         deduped AS (
+           SELECT DISTINCT ON (LOWER(TRIM(COALESCE(title, link))), source)
+             title, link, date, source, snippet, tags, summary, key_innovation, significance,
+             (${combinedExpr}) AS raw_score
+           FROM scored
+           ${relevanceGate}
+           ORDER BY LOWER(TRIM(COALESCE(title, link))), source, (${combinedExpr}) DESC, date DESC
+         )
+         SELECT
+           title, link, date, source, snippet, tags, summary, key_innovation, significance,
+           ROUND(raw_score::numeric, 3)::double precision AS score
+         FROM deduped
+         ORDER BY raw_score DESC, date DESC
+         LIMIT ${limitParam} OFFSET ${offsetParam}`,
         params
       );
-      if (res.rows.length > 0) {
-        return res.rows.map((r) => mapRow(r, false));
-      }
+
+      return res.rows.map((r) => mapRow(r, false));
     } catch (e) {
-      console.warn('[DB] Postgres vector search failed, using hybrid SQLite search:', e);
+      console.warn('[DB] Postgres hybrid search failed, falling back to SQLite:', e);
     }
   }
 
-  // Hybrid Search over SQLite (Vector cosine similarity + Lexical keyword boost)
+  // Hybrid Search over SQLite (Vector cosine similarity + Lexical keyword boost across ALL rows)
   const sqlite = getSqliteDb();
   if (!sqlite) return [];
 
   try {
-    const sourceCond = sourceFilter ? `WHERE a.source = ?` : '';
+    const conditions: string[] = [];
+    const params: any[] = [];
+    if (sourceFilter) {
+      conditions.push(`a.source = ?`);
+      params.push(sourceFilter);
+    }
+    if (startDate) {
+      conditions.push(`a.date >= ?`);
+      params.push(startDate.toISOString());
+    }
+    const whereSql = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
     const rows = sqlite
       .prepare(
         `SELECT a.title, a.link, a.date, a.source, a.snippet, a.tags, a.embedding,
@@ -576,61 +665,78 @@ export async function searchArticlesHybrid(
                 COALESCE(c.significance, a.significance) as significance
          FROM articles a
          LEFT JOIN cached_summaries c ON a.link = c.link
-         ${sourceCond}
-         ORDER BY a.date DESC
-         LIMIT 1000`
+         ${whereSql}
+         ORDER BY a.date DESC`
       )
-      .all(...(sourceFilter ? [sourceFilter] : []));
+      .all(...params);
 
     const scored: Article[] = [];
 
     for (const row of rows) {
-      let score = 0;
+      let vecScore = 0;
+      let lexScore = 0;
 
       // 1. Vector Similarity (if queryEmbedding & row embedding exist)
       if (queryEmbedding && row.embedding) {
         const rowEmb = parseEmbedding(row.embedding);
         if (rowEmb) {
-          const sim = cosineSimilarity(queryEmbedding, rowEmb);
-          score += Math.max(0, sim) * 0.65;
+          vecScore = Math.max(0, cosineSimilarity(queryEmbedding, rowEmb));
         }
       }
 
-      // 2. Lexical BM25-style Keyword Boost (Title, Tags, Snippet)
-      const titleLower = (row.title || '').toLowerCase();
-      const snippetLower = (row.snippet || '').toLowerCase();
-      const tagsLower = (row.tags || '').toLowerCase();
+      // 2. Lexical BM25-style Keyword Boost (Title, Tags, Snippet, Source)
+      if (cleanQuery) {
+        const titleLower = (row.title || '').toLowerCase();
+        const snippetLower = (row.snippet || '').toLowerCase();
+        const tagsLower = (row.tags || '').toLowerCase();
+        const sourceLower = (row.source || '').toLowerCase();
 
-      if (titleLower.includes(cleanQuery)) score += 0.45;
-      if (tagsLower.includes(cleanQuery)) score += 0.35;
+        if (titleLower.includes(cleanQuery)) lexScore += 0.45;
+        if (tagsLower.includes(cleanQuery)) lexScore += 0.30;
+        if (snippetLower.includes(cleanQuery)) lexScore += 0.18;
+        if (sourceLower.includes(cleanQuery)) lexScore += 0.20;
 
-      let matchedTerms = 0;
-      for (const term of terms) {
-        if (titleLower.includes(term)) {
-          score += 0.18;
-          matchedTerms++;
-        } else if (tagsLower.includes(term)) {
-          score += 0.12;
-          matchedTerms++;
-        } else if (snippetLower.includes(term)) {
-          score += 0.06;
-          matchedTerms++;
+        let matchedTerms = 0;
+        for (const term of terms) {
+          if (titleLower.includes(term)) {
+            lexScore += 0.16;
+            matchedTerms++;
+          } else if (tagsLower.includes(term)) {
+            lexScore += 0.10;
+            matchedTerms++;
+          } else if (snippetLower.includes(term)) {
+            lexScore += 0.05;
+            matchedTerms++;
+          }
+        }
+
+        if (terms.length > 1 && matchedTerms === terms.length) {
+          lexScore += 0.15; // Exact multi-term convergence bonus
         }
       }
 
-      if (terms.length > 0 && matchedTerms === terms.length) {
-        score += 0.2; // Exact multi-term convergence bonus
-      }
-
-      if (score > 0.05) {
+      const passesGate = cleanQuery ? lexScore > 0 || vecScore >= 0.56 : vecScore >= 0.30;
+      if (passesGate) {
+        const combined = queryEmbedding ? vecScore * 0.62 + lexScore : lexScore;
         const mapped = mapRow(row, false);
-        mapped.score = Math.min(0.99, Number(score.toFixed(3)));
+        mapped.score = Math.min(0.99, Number(combined.toFixed(3)));
         scored.push(mapped);
       }
     }
 
-    scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-    return scored.slice(0, limit);
+    scored.sort((a, b) => {
+      const diff = (b.score ?? 0) - (a.score ?? 0);
+      if (Math.abs(diff) > 0.0005) return diff;
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    });
+    const seenTitleSource = new Set<string>();
+    const deduped = scored.filter((a) => {
+      const key = `${(a.title || a.link).trim().toLowerCase()}|${a.source}`;
+      if (seenTitleSource.has(key)) return false;
+      seenTitleSource.add(key);
+      return true;
+    });
+    return deduped.slice(offset, offset + limit);
   } catch (e) {
     console.error('[DB] Hybrid search error:', e);
     return [];
