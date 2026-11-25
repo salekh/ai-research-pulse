@@ -22,7 +22,7 @@ const OVERVIEW_STYLE =
 
 // ---------------------------------------------------------------------------
 // Transcript / Script generation
-// - `podcast` (multi-article deep dialogue synthesis) -> gemini-4-carbon (MEDIUM thinking)
+// - `podcast` (multi-article deep dialogue synthesis) -> gemini-4-neon (MEDIUM thinking)
 // - `overview` (fast single-speaker executive briefing) -> gemini-4-hydrogen (LOW thinking)
 // ---------------------------------------------------------------------------
 export async function generateTranscriptWithModel(
@@ -41,7 +41,7 @@ export async function generateTranscriptWithModel(
   try {
     const { text, modelUsed } = await generateContentWithFallback({
       contents: prompt,
-      tier: type === 'podcast' ? 'carbon' : 'hydrogen',
+      tier: type === 'podcast' ? 'neon' : 'hydrogen',
       thinkingLevel: type === 'podcast' ? 'MEDIUM' : 'LOW',
       config: {
         maxOutputTokens: type === 'podcast' ? 8192 : 4096,

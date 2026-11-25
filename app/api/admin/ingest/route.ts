@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ingestAll } from '@/lib/ingestion';
+import { ingestLatestAcademicPapers } from '@/lib/academic-ingestion';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes timeout for serverless
@@ -19,12 +20,19 @@ export async function POST(request: Request) {
     const { searchParams } = new URL(request.url);
     const refresh = searchParams.get('refresh') === 'true';
 
-    const articles = await ingestAll(refresh);
+    const [articles, academicCount] = await Promise.all([
+      ingestAll(refresh),
+      ingestLatestAcademicPapers(refresh).catch((e) => {
+        console.error('[admin/ingest] Academic ingest warning:', e);
+        return 0;
+      }),
+    ]);
 
     return NextResponse.json({
       success: true,
       count: articles.length,
-      message: `Ingested ${articles.length} articles.`,
+      academicCount,
+      message: `Ingested ${articles.length} lab articles and ${academicCount} academic papers.`,
     });
   } catch (error) {
     console.error('[admin/ingest] Error:', error);

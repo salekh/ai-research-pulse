@@ -382,7 +382,8 @@ export async function POST(request: Request) {
       ? body.tags.filter((t: unknown): t is string => typeof t === 'string').slice(0, 8)
       : [];
     const refresh = Boolean(body?.refresh);
-    const tier = body?.tier === 'carbon' ? 'carbon' : 'hydrogen';
+    const tier: 'neon' | 'hydrogen' =
+      body?.tier === 'hydrogen' ? 'hydrogen' : 'neon';
 
     if (!title) {
       return NextResponse.json(
@@ -422,10 +423,10 @@ export async function POST(request: Request) {
       const { text, modelUsed } = await generateContentWithFallback({
         contents: prompt,
         tier,
-        thinkingLevel: tier === 'carbon' ? 'MEDIUM' : 'LOW',
+        thinkingLevel: 'LOW',
         config: {
           responseMimeType: 'application/json',
-          maxOutputTokens: tier === 'carbon' ? 8192 : 6144,
+          maxOutputTokens: tier === 'neon' ? 8192 : 6144,
         },
       });
 

@@ -66,7 +66,7 @@ ${articlesContext}`;
     try {
       const { text, modelUsed } = await generateContentWithFallback({
         contents: prompt,
-        tier: 'carbon',
+        tier: 'neon',
         thinkingLevel: 'MEDIUM',
         config: {
           maxOutputTokens: 16384,

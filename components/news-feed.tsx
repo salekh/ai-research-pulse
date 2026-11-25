@@ -19,6 +19,7 @@ import {
   Sparkles,
   Cpu,
   X,
+  GraduationCap,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -29,6 +30,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { CompanyLogo } from './company-logo';
 import { ArticleVisualDrawer } from './a2ui/ArticleVisualDrawer';
+import { AcademicFeed } from './academic-feed';
+import { AskPaperDrawer, AskTargetArticle } from './ask-paper-drawer';
+import { AcademicCard } from './academic-card';
+import type { AcademicPaper } from '@/lib/db';
 
 interface Article {
   title: string;
@@ -83,8 +88,14 @@ export function NewsFeed({
   const [timeRange, setTimeRange] = useState('all');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [meta, setMeta] = useState<{ engine?: string; totalIndexed?: number; model?: string }>({});
-  const [visualBriefArticle, setVisualBriefArticle] = useState<Article | null>(null);
+  const [meta, setMeta] = useState<{
+    engine?: string;
+    totalIndexed?: number;
+    totalAcademicPapers?: number;
+    model?: string;
+  }>({});
+  const [visualBriefArticle, setVisualBriefArticle] = useState<any | null>(null);
+  const [askTargetArticle, setAskTargetArticle] = useState<AskTargetArticle | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const requestSeqRef = useRef(0);
 
@@ -207,7 +218,7 @@ export function NewsFeed({
     setActiveQuery('');
   };
 
-  const handleSaveArticle = (article: Article) => {
+  const handleSaveArticle = (article: any) => {
     if (!savedArticles.some((a) => a.link === article.link)) {
       const newSaved = [...savedArticles, article];
       setSavedArticles(newSaved);
@@ -215,11 +226,13 @@ export function NewsFeed({
     }
   };
 
-  const handleRemoveArticle = (article: Article) => {
+  const handleRemoveArticle = (article: any) => {
     const newSaved = savedArticles.filter((a) => a.link !== article.link);
     setSavedArticles(newSaved);
     localStorage.setItem('savedArticles', JSON.stringify(newSaved));
   };
+
+  const savedLinksSet = new Set(savedArticles.map((a) => a.link));
 
   return (
     <div className="space-y-6">
@@ -233,12 +246,25 @@ export function NewsFeed({
               className="data-[state=active]:bg-[#202124] data-[state=active]:text-white rounded-lg px-4 py-2 text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer"
             >
               <Newspaper className="w-4 h-4" />
-              <span>Research Feed</span>
-              {meta.totalIndexed && (
-                <span className="text-xs font-mono opacity-75 tabular-nums">
+              <span>Labs Feed</span>
+              {meta.totalIndexed ? (
+                <span className="text-xs font-mono font-normal opacity-75 tabular-nums">
                   ({meta.totalIndexed})
                 </span>
-              )}
+              ) : null}
+            </TabsTrigger>
+
+            <TabsTrigger
+              value="academic"
+              className="data-[state=active]:bg-[#202124] data-[state=active]:text-white rounded-lg px-4 py-2 text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer"
+            >
+              <GraduationCap className="w-4 h-4" />
+              <span>Academic Research</span>
+              {meta.totalAcademicPapers ? (
+                <span className="text-xs font-mono font-normal opacity-75 tabular-nums">
+                  ({meta.totalAcademicPapers})
+                </span>
+              ) : null}
             </TabsTrigger>
 
             <TabsTrigger
@@ -459,6 +485,9 @@ export function NewsFeed({
                       onSave={() => handleSaveArticle(article)}
                       isSaved={savedArticles.some((a) => a.link === article.link)}
                       onOpenVisualBrief={(target) => setVisualBriefArticle(target)}
+                      onAskArticle={(target) =>
+                        setAskTargetArticle({ ...target, category: 'lab' })
+                      }
                     />
                   ))}
             </div>
@@ -477,42 +506,81 @@ export function NewsFeed({
           )}
         </TabsContent>
 
-        {/* TAB 2: Cross-Lab Trends */}
+        {/* TAB 2: Dedicated Academic Research (arXiv 6-Month Archive, Strictly Separate from Labs) */}
+        <TabsContent value="academic" className="mt-4">
+          <AcademicFeed
+            savedLinks={savedLinksSet}
+            onSavePaper={(paper) => handleSaveArticle(paper)}
+            onAskPaper={(paper) => setAskTargetArticle(paper)}
+            onOpenVisualBrief={(paper) =>
+              setVisualBriefArticle({
+                title: paper.title,
+                link: paper.link,
+                source: paper.venue || `arXiv · ${paper.primaryCategory}`,
+                date: paper.date,
+                snippet: paper.abstract || paper.snippet,
+                summary: paper.summary,
+                keyInnovation: paper.keyInnovation,
+                significance: paper.significance,
+                tags: paper.tags,
+              })
+            }
+            onCountChange={(count) =>
+              setMeta((prev) => ({ ...prev, totalAcademicPapers: count }))
+            }
+          />
+        </TabsContent>
+
+        {/* TAB 3: Cross-Lab Trends */}
         <TabsContent value="trends" className="mt-4">
           <TrendChart articles={articles} />
         </TabsContent>
 
-        {/* TAB 3: Audio & Podcasts */}
+        {/* TAB 4: Audio & Podcasts */}
         <TabsContent value="insights" className="mt-4">
           <InsightsView />
         </TabsContent>
 
-        {/* TAB 4: Recursive Self-Improvement Engine */}
+        {/* TAB 5: Recursive Self-Improvement Engine */}
         <TabsContent value="self-improve" className="mt-4">
           <SelfImproveView />
         </TabsContent>
 
-        {/* TAB 5: Saved Bookmarks */}
+        {/* TAB 6: Saved Bookmarks */}
         <TabsContent value="saved" className="space-y-6 mt-4">
           {savedArticles.length === 0 ? (
             <div className="text-center py-16 bg-white border border-[#DADCE0] rounded-xl text-[#5F6368]">
               <Bookmark className="w-10 h-10 mx-auto mb-3 opacity-30" />
               <p className="text-sm font-bold text-[#202124]">No saved publications yet</p>
               <p className="text-xs mt-1">
-                Click the bookmark icon on any research card to save it here for offline review.
+                Click the bookmark icon on any lab article or academic paper to save it here.
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {savedArticles.map((article, i) => (
-                <NewsCard
-                  key={`${article.link}-${i}`}
-                  article={article}
-                  onSave={() => handleRemoveArticle(article)}
-                  isSaved={true}
-                  onOpenVisualBrief={(target) => setVisualBriefArticle(target)}
-                />
-              ))}
+              {savedArticles.map((article: any, i) =>
+                article.category === 'academic' ? (
+                  <AcademicCard
+                    key={`${article.link}-${i}`}
+                    paper={article as AcademicPaper}
+                    isSaved={true}
+                    onSave={() => handleRemoveArticle(article)}
+                    onAskPaper={(paper) => setAskTargetArticle(paper)}
+                    onOpenVisualBrief={(paper) => setVisualBriefArticle(paper)}
+                  />
+                ) : (
+                  <NewsCard
+                    key={`${article.link}-${i}`}
+                    article={article}
+                    onSave={() => handleRemoveArticle(article)}
+                    isSaved={true}
+                    onOpenVisualBrief={(target) => setVisualBriefArticle(target)}
+                    onAskArticle={(target) =>
+                      setAskTargetArticle({ ...target, category: 'lab' })
+                    }
+                  />
+                )
+              )}
             </div>
           )}
         </TabsContent>
@@ -522,6 +590,12 @@ export function NewsFeed({
         article={visualBriefArticle}
         isOpen={Boolean(visualBriefArticle)}
         onClose={() => setVisualBriefArticle(null)}
+      />
+
+      <AskPaperDrawer
+        article={askTargetArticle}
+        isOpen={Boolean(askTargetArticle)}
+        onClose={() => setAskTargetArticle(null)}
       />
     </div>
   );

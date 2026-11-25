@@ -8,6 +8,17 @@
 
 ## Active & Prioritized Backlog
 
+### Item #0 — Academic Research Track (arXiv 6-Month Backfill), Grounded Paper & Lab Q&A (`POST /api/ask`), and Gemini 4 Neon + Hydrogen Routing
+- **Priority:** `P0`
+- **Status:** `Done`
+- **Description:**
+  1. Add a strictly isolated **Academic Research** tab (`category = 'academic'`, never mixed with Lab articles `category = 'lab'`) indexing AI/LLMs/Intelligence/Learning arXiv papers back-dated 6 months (`2026-05-25` → `2026-11-25`) plus live incremental ingestion.
+  2. Store **only** metadata, abstract, short `gemini-4-hydrogen` summary, deterministic taxonomy tags, 768-dim vector embedding, and direct `arXiv` / `PDF` links (never full paper text in DB).
+  3. Add interactive multi-turn **Ask Paper / Ask Article** Q&A (`POST /api/ask` + `components/ask-paper-drawer.tsx`) across **both** Academic Papers and Frontier Lab Articles, fetching arXiv HTML / article text on demand ephemerally without DB indexing.
+  4. Upgrade all cognitive-heavy workloads (`POST /api/ask`, `POST /api/a2ui`, `POST /api/trends`, `POST /api/self-improve`, podcast scripting) to **`gemini-4-neon`** and route light cognition (short summaries, batch filtering/tagging, overview scripting, audio transcription) to **`gemini-4-hydrogen`**.
+
+---
+
 ### Item #1 — A2UI 1.0 Visual Article Renderer
 - **Priority:** `P0`
 - **Status:** `Done` (`@a2ui-engineer`)

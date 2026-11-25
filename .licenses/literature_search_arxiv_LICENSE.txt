@@ -1,0 +1,9 @@
+arXiv API Terms of Use Notice
+==============================
+Recorded: 2026-11-25
+Source: https://info.arxiv.org/help/api/index.html
+
+All arXiv metadata and abstracts retrieved by AI Research Pulse respect the arXiv API Terms of Use
+(rate limit <= 1 request per 3 seconds, canonical attribution & direct links to https://arxiv.org/abs/<id>
+and https://arxiv.org/pdf/<id>.pdf, abstract-only indexing without full-paper redistribution).
+Users should always check the license of individual arXiv preprints before downstream reuse.

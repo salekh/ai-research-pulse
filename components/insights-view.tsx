@@ -237,7 +237,7 @@ function GenerationProgress({
   step: 'selecting' | 'transcript' | 'audio' | 'done';
 }) {
   const steps = [
-    { key: 'transcript', label: 'Drafting Script (gemini-4-carbon / hydrogen)', icon: Mic },
+    { key: 'transcript', label: 'Drafting Script (gemini-4-neon / hydrogen)', icon: Mic },
     { key: 'audio', label: 'Synthesizing Audio (gemini-3.8-flash-tts)', icon: Volume2 },
     { key: 'done', label: 'Complete', icon: Sparkles },
   ];
@@ -395,7 +395,7 @@ export function InsightsView() {
             </h2>
             <p className="text-sm text-[#BABBBC] max-w-2xl">
               Listen to this week&apos;s executive AI research briefing or a deep-dive technical
-              podcast featuring hosts Dr. Anya &amp; Liam, scripted by Gemini 4 Carbon &amp; Hydrogen.
+              podcast featuring hosts Dr. Anya &amp; Liam, scripted by Gemini 4 Neon &amp; Hydrogen.
             </p>
           </div>
         </div>

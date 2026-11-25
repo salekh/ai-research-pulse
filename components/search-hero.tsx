@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Sparkles, ArrowRight, Cpu, TrendingUp, Shuffle, Layers } from 'lucide-react';
+import { Search, Sparkles, ArrowRight, Cpu, TrendingUp, Shuffle, Layers, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'motion/react';
@@ -89,7 +89,7 @@ export function SearchHero({ onSearch, onShowFeed }: SearchHeroProps) {
       <div className="relative z-10 max-w-4xl mx-auto w-full px-6 my-auto py-12 text-center space-y-8">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/8 border border-white/15 backdrop-blur-md text-xs font-mono font-normal text-[#8ab4f8]">
           <Cpu className="w-3.5 h-3.5 text-[#4471ED]" />
-          <span>Powered by Google Gemini 4 (Hydrogen &amp; Carbon) &amp; Hybrid Vector Search</span>
+          <span>Powered by Google Gemini 4 (Neon &amp; Hydrogen) &amp; Hybrid Vector Search</span>
         </div>
 
         <div className="space-y-4">
@@ -172,19 +172,27 @@ export function SearchHero({ onSearch, onShowFeed }: SearchHeroProps) {
         </div>
 
         {/* Primary CTA Strip */}
-        <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+        <div className="flex flex-wrap items-center justify-center gap-3.5 pt-4">
           <Button
             onClick={() => onShowFeed('feed')}
-            className="h-12 px-7 rounded-xl bg-white text-[#202124] hover:bg-[#F8F9FA] font-bold text-base shadow-lg flex items-center gap-2.5 cursor-pointer"
+            className="h-12 px-6 rounded-xl bg-white text-[#202124] hover:bg-[#F8F9FA] font-bold text-base shadow-lg flex items-center gap-2 cursor-pointer"
           >
             <Layers className="w-4 h-4 text-[#4471ED]" />
-            <span>Explore Research Feed</span>
+            <span>Explore Labs Feed</span>
+          </Button>
+
+          <Button
+            onClick={() => onShowFeed('academic')}
+            className="h-12 px-6 rounded-xl bg-[#335CD6] hover:bg-[#274BB5] text-white font-bold text-base shadow-lg flex items-center gap-2 cursor-pointer"
+          >
+            <GraduationCap className="w-4 h-4 text-white" />
+            <span>Academic Research (arXiv)</span>
           </Button>
 
           <Button
             onClick={() => onShowFeed('trends')}
             variant="outline"
-            className="h-12 px-6 rounded-xl bg-white/10 hover:bg-white/15 text-white border-white/20 font-semibold text-base flex items-center gap-2 cursor-pointer"
+            className="h-12 px-5 rounded-xl bg-white/10 hover:bg-white/15 text-white border-white/20 font-semibold text-base flex items-center gap-2 cursor-pointer"
           >
             <TrendingUp className="w-4 h-4 text-[#8ab4f8]" />
             <span>Cross-Lab Trends</span>
@@ -193,19 +201,19 @@ export function SearchHero({ onSearch, onShowFeed }: SearchHeroProps) {
           <Button
             onClick={() => onShowFeed('self-improve')}
             variant="outline"
-            className="h-12 px-6 rounded-xl bg-white/10 hover:bg-white/15 text-white border-white/20 font-semibold text-base flex items-center gap-2 cursor-pointer"
+            className="h-12 px-5 rounded-xl bg-white/10 hover:bg-white/15 text-white border-white/20 font-semibold text-base flex items-center gap-2 cursor-pointer"
           >
             <Sparkles className="w-4 h-4 text-[#FBBC04]" />
-            <span>Self-Improve Engine</span>
+            <span>Self-Improve</span>
           </Button>
 
           <Button
             onClick={() => (window.location.href = '/api/lucky')}
             variant="ghost"
-            className="h-12 px-5 rounded-xl text-[#BABBBC] hover:text-white hover:bg-white/8 font-medium text-base flex items-center gap-2 cursor-pointer"
+            className="h-12 px-4 rounded-xl text-[#BABBBC] hover:text-white hover:bg-white/8 font-medium text-base flex items-center gap-2 cursor-pointer"
           >
             <Shuffle className="w-4 h-4" />
-            <span>I&apos;m Feeling Lucky</span>
+            <span>Lucky</span>
           </Button>
         </div>
       </div>
@@ -234,15 +242,15 @@ export function SearchHero({ onSearch, onShowFeed }: SearchHeroProps) {
               Gemini 4
             </div>
             <div className="text-sm text-[#BABBBC] mt-0.5">
-              Hydrogen &amp; Carbon LLMs · 3.8 Flash TTS
+              Neon &amp; Hydrogen LLMs · 3.8 Flash TTS
             </div>
           </div>
           <div>
             <div className="text-2xl md:text-3xl font-bold text-[#FBBC04] font-display tabular-nums">
-              768-Dim
+              Labs + arXiv
             </div>
             <div className="text-sm text-[#BABBBC] mt-0.5">
-              Hybrid Vector Search &amp; A2UI 1.0 Briefs
+              Isolated Tracks · Paper Q&amp;A &amp; A2UI 1.0
             </div>
           </div>
         </div>

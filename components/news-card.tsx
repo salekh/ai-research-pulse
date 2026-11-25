@@ -12,11 +12,13 @@ import {
   Zap,
   Cpu,
   Layers,
+  MessageSquare,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import { CompanyLogo } from './company-logo';
 import { ArticleVisualDrawer } from './a2ui/ArticleVisualDrawer';
+import { AskPaperDrawer } from './ask-paper-drawer';
 
 interface Article {
   title: string;
@@ -45,6 +47,7 @@ interface NewsCardProps {
   onSave?: (article: Article) => void;
   isSaved?: boolean;
   onOpenVisualBrief?: (article: Article) => void;
+  onAskArticle?: (article: Article) => void;
 }
 
 const SOURCE_ACCENTS: Record<string, { from: string; to: string }> = {
@@ -64,9 +67,11 @@ export function NewsCard({
   onSave,
   isSaved = false,
   onOpenVisualBrief,
+  onAskArticle,
 }: NewsCardProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [localDrawerOpen, setLocalDrawerOpen] = useState(false);
+  const [localAskOpen, setLocalAskOpen] = useState(false);
   const [summaryData, setSummaryData] = useState<{
     summary: string;
     keyInnovation?: string;
@@ -286,12 +291,12 @@ export function NewsCard({
       </div>
 
       {/* Card Footer */}
-      <div className="px-4 py-3 flex justify-between items-center gap-2 mt-auto border-t border-[#DADCE0]/70 bg-[#F8F9FA]/50">
+      <div className="px-4 py-3 flex justify-between items-center gap-1.5 mt-auto border-t border-[#DADCE0]/70 bg-[#F8F9FA]/50">
         <a
           href={article.link}
           target="_blank"
           rel="noopener noreferrer"
-          title="Read original paper"
+          title="Read original article"
           className="inline-flex items-center text-xs font-semibold text-[#5F6368] hover:text-[#202124] transition-colors gap-1 whitespace-nowrap shrink-0 min-h-[34px]"
         >
           <span>Read</span>
@@ -302,7 +307,7 @@ export function NewsCard({
           <button
             type="button"
             onClick={handleGenerateOverview}
-            className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-md transition-all cursor-pointer whitespace-nowrap shrink-0 min-h-[34px] ${
+            className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1.5 rounded-md transition-all cursor-pointer whitespace-nowrap shrink-0 min-h-[34px] ${
               isExpanded
                 ? 'bg-[#202124] text-white'
                 : summaryData
@@ -317,8 +322,24 @@ export function NewsCard({
             ) : (
               <Sparkles className="w-3.5 h-3.5 text-[#4471ED] shrink-0" />
             )}
-            <span>{isExpanded ? 'Hide' : summaryData ? 'Brief' : 'Summarize'}</span>
+            <span>{isExpanded ? 'Hide' : summaryData ? 'Brief' : 'Summary'}</span>
             {!isExpanded && <ChevronDown className="w-3 h-3 shrink-0" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (onAskArticle) {
+                onAskArticle(article);
+              } else {
+                setLocalAskOpen(true);
+              }
+            }}
+            title="Ask questions about this article with Gemini 4 Neon"
+            className="inline-flex items-center gap-1 text-xs font-semibold font-display px-2.5 py-1.5 rounded-md bg-[#202124] hover:bg-[#303134] text-white shadow-xs transition-colors cursor-pointer whitespace-nowrap shrink-0 min-h-[34px]"
+          >
+            <MessageSquare className="w-3.5 h-3.5 text-[#8AB4F8] shrink-0" />
+            <span>Ask</span>
           </button>
 
           <button
@@ -331,10 +352,10 @@ export function NewsCard({
               }
             }}
             title="Open interactive A2UI 1.0 Visual Brief"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold font-display px-2.5 py-1.5 rounded-md bg-[#335CD6] hover:bg-[#274BB5] text-white shadow-xs transition-colors cursor-pointer whitespace-nowrap shrink-0 min-h-[34px]"
+            className="inline-flex items-center gap-1 text-xs font-semibold font-display px-2.5 py-1.5 rounded-md bg-[#335CD6] hover:bg-[#274BB5] text-white shadow-xs transition-colors cursor-pointer whitespace-nowrap shrink-0 min-h-[34px]"
           >
             <Layers className="w-3.5 h-3.5 shrink-0" />
-            <span>Visual Brief</span>
+            <span>Visual</span>
           </button>
         </div>
       </div>
@@ -344,6 +365,14 @@ export function NewsCard({
           article={article}
           isOpen={localDrawerOpen}
           onClose={() => setLocalDrawerOpen(false)}
+        />
+      )}
+
+      {!onAskArticle && (
+        <AskPaperDrawer
+          article={{ ...article, category: 'lab' }}
+          isOpen={localAskOpen}
+          onClose={() => setLocalAskOpen(false)}
         />
       )}
     </div>

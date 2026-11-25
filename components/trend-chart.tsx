@@ -202,7 +202,7 @@ function TreemapContent(props: any) {
 export function TrendChart({ articles }: { articles: Article[] }) {
   const [trends, setTrends] = useState<TrendData[]>([]);
   const [summary, setSummary] = useState<string | null>(null);
-  const [modelUsed, setModelUsed] = useState<string>('gemini-4-carbon');
+  const [modelUsed, setModelUsed] = useState<string>('gemini-4-neon');
   const [loading, setLoading] = useState(false);
   const [analyzed, setAnalyzed] = useState(false);
   const [isMounted, setIsMounted] = useState(false);

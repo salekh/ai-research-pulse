@@ -9,7 +9,7 @@ export const project =
   rawProject === 'sa-nexus-gcp-4-sandbox-183936' ? 'sa-learning-1' : rawProject;
 export const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
 
-export type ModelTier = 'hydrogen' | 'carbon';
+export type ModelTier = 'hydrogen' | 'neon' | 'carbon';
 export type ThinkingLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'XHIGH';
 
 function uniqueModels(models: Array<string | undefined>): string[] {
@@ -26,10 +26,11 @@ function uniqueModels(models: Array<string | undefined>): string[] {
 }
 
 const hydrogenModel = process.env.GEMINI_MODEL || 'gemini-4-hydrogen';
-const carbonModel =
-  process.env.GEMINI_CARBON_MODEL ||
+const neonModel =
+  process.env.GEMINI_NEON_MODEL ||
   process.env.GEMINI_PRO_MODEL ||
-  'gemini-4-carbon';
+  'gemini-4-neon';
+const carbonModel = process.env.GEMINI_CARBON_MODEL || 'gemini-4-carbon';
 const ttsModel = process.env.GEMINI_TTS_MODEL || 'gemini-3.8-flash-tts';
 const ttsLiteModel =
   process.env.GEMINI_TTS_LITE_MODEL || 'gemini-3.8-flash-lite-tts';
@@ -43,10 +44,12 @@ const rerankerModel =
 /**
  * Verified Model Registry (sa-learning-1, global endpoint).
  *
- * - PRIMARY / HYDROGEN: `gemini-4-hydrogen` (GA) — fast, high-throughput LLM
- *   for filtering, tagging, article summarization, reranking, and quick synthesis.
- * - CARBON: `gemini-4-carbon` (GA) — flagship frontier reasoning LLM for
- *   multi-article trend synthesis, recursive self-improvement, and deep podcast scripting.
+ * - PRIMARY / HYDROGEN: `gemini-4-hydrogen` (GA) — light cognition: fast filtering,
+ *   tagging, short summaries, overview briefings, and multimodal audio transcription.
+ * - NEON: `gemini-4-neon` (GA) — cognitive-heavy frontier reasoning: interactive
+ *   paper/article Q&A, A2UI 1.0 visual brief synthesis, cross-lab trends,
+ *   multi-speaker podcast scripting, and recursive self-improvement audits.
+ * - CARBON: `gemini-4-carbon` (GA) — secondary deep-reasoning fallback behind Neon.
  * - TTS: `gemini-3.8-flash-tts` (GA) — flagship studio multi-speaker TTS.
  * - TTS_LITE: `gemini-3.8-flash-lite-tts` (GA) — fast, cost-efficient single-speaker TTS.
  * - TRANSCRIPTION: `gemini-4-hydrogen` (GA) — multimodal speech-to-text + diarization.
@@ -58,6 +61,7 @@ const rerankerModel =
 export const MODEL_REGISTRY = {
   PRIMARY: hydrogenModel,
   HYDROGEN: hydrogenModel,
+  NEON: neonModel,
   CARBON: carbonModel,
   FALLBACKS: uniqueModels([
     hydrogenModel,
@@ -65,7 +69,18 @@ export const MODEL_REGISTRY = {
     'gemini-3.8-flash',
     'gemini-3.5-flash',
   ]),
+  NEON_FALLBACKS: uniqueModels([
+    neonModel,
+    'gemini-4-neon',
+    carbonModel,
+    'gemini-4-carbon',
+    hydrogenModel,
+    'gemini-4-hydrogen',
+    'gemini-3.8-flash',
+  ]),
   CARBON_FALLBACKS: uniqueModels([
+    neonModel,
+    'gemini-4-neon',
     carbonModel,
     'gemini-4-carbon',
     hydrogenModel,
@@ -98,6 +113,7 @@ export const MODEL_REGISTRY = {
 
 export interface AITelemetry {
   primaryModel: string;
+  neonModel: string;
   carbonModel: string;
   ttsModel: string;
   ttsLiteModel: string;
@@ -114,6 +130,7 @@ export interface AITelemetry {
 
 const telemetry: AITelemetry = {
   primaryModel: MODEL_REGISTRY.PRIMARY,
+  neonModel: MODEL_REGISTRY.NEON,
   carbonModel: MODEL_REGISTRY.CARBON,
   ttsModel: MODEL_REGISTRY.TTS,
   ttsLiteModel: MODEL_REGISTRY.TTS_LITE,
@@ -177,6 +194,11 @@ export function getVertexEndpoint(
  * falling back to `gcloud auth print-access-token` if local ADC requires reauth.
  */
 export async function getAccessToken(): Promise<string> {
+  if (process.env.CLOUDSDK_AUTH_ACCESS_TOKEN?.trim()) {
+    telemetry.authStatus = 'ok';
+    return process.env.CLOUDSDK_AUTH_ACCESS_TOKEN.trim();
+  }
+
   try {
     const client = await auth.getClient();
     const tokenResponse = await client.getAccessToken();
@@ -216,7 +238,9 @@ function normalizeConfigForModel(
 ): any {
   const cfg: any = rawConfig ? { ...rawConfig } : {};
   const isGemini4 = model.startsWith('gemini-4-');
+  const isNeon = model.startsWith('gemini-4-neon');
   const isCarbon = model.startsWith('gemini-4-carbon');
+  const isHeavy = isNeon || isCarbon;
   const isGemini38 = model.startsWith('gemini-3.8-');
 
   if (isGemini4) {
@@ -230,7 +254,7 @@ function normalizeConfigForModel(
     let resolvedLevel: string =
       thinkingLevel ||
       existingThinking.thinkingLevel ||
-      (isCarbon ? 'MEDIUM' : 'LOW');
+      (isHeavy ? 'MEDIUM' : 'LOW');
 
     if (resolvedLevel === 'MINIMAL') resolvedLevel = 'LOW';
     if (isCarbon && resolvedLevel === 'XHIGH') resolvedLevel = 'HIGH';
@@ -240,7 +264,7 @@ function normalizeConfigForModel(
       thinkingLevel: resolvedLevel,
     };
 
-    const minOutputTokens = isCarbon ? 8192 : 4096;
+    const minOutputTokens = isHeavy ? 8192 : 4096;
     if (
       typeof cfg.maxOutputTokens === 'number' &&
       cfg.maxOutputTokens < minOutputTokens
@@ -332,8 +356,9 @@ async function generateViaRestApi(
 
 /**
  * Resilient content generation with dual-tier Gemini 4 routing:
- * - `tier: 'hydrogen'` (default): `gemini-4-hydrogen` -> `gemini-3.8-flash` -> `gemini-3.5-flash`
- * - `tier: 'carbon'`: `gemini-4-carbon` -> `gemini-4-hydrogen` -> `gemini-3.8-flash`
+ * - `tier: 'hydrogen'` (default, light cognition): `gemini-4-hydrogen` -> `gemini-3.8-flash` -> `gemini-3.5-flash`
+ * - `tier: 'neon'` (heavy cognition): `gemini-4-neon` -> `gemini-4-carbon` -> `gemini-4-hydrogen` -> `gemini-3.8-flash`
+ * - `tier: 'carbon'` (legacy alias, routes via Neon first): `gemini-4-neon` -> `gemini-4-carbon` -> `gemini-4-hydrogen`
  * Automatically applies Gemini 4 thinking/token safeguards and cascades on error.
  */
 export async function generateContentWithFallback(options: {
@@ -347,9 +372,11 @@ export async function generateContentWithFallback(options: {
   telemetry.totalCalls++;
 
   const baseChain =
+    options.tier === 'neon' ||
     options.tier === 'carbon' ||
+    options.preferredModel === MODEL_REGISTRY.NEON ||
     options.preferredModel === MODEL_REGISTRY.CARBON
-      ? MODEL_REGISTRY.CARBON_FALLBACKS
+      ? MODEL_REGISTRY.NEON_FALLBACKS
       : MODEL_REGISTRY.FALLBACKS;
 
   const modelsToTry = options.preferredModel
@@ -368,13 +395,16 @@ export async function generateContentWithFallback(options: {
     );
 
     try {
-      const response = await ai.models.generateContent({
-        model,
-        contents: options.contents,
-        config: effectiveConfig,
-      });
+      const text = process.env.CLOUDSDK_AUTH_ACCESS_TOKEN?.trim()
+        ? await generateViaRestApi(model, options.contents, effectiveConfig)
+        : (
+            await ai.models.generateContent({
+              model,
+              contents: options.contents,
+              config: effectiveConfig,
+            })
+          ).text;
 
-      const text = response.text;
       if (text) {
         const elapsed = Date.now() - start;
         telemetry.avgLatencyMs = Math.round(
@@ -447,7 +477,7 @@ export async function getEmbeddingsBatch(
     return texts.map(() => null);
   }
 
-  const BATCH_SIZE = 100;
+  const BATCH_SIZE = 20; // Keep total tokens per batch safely under text-embedding-004's 20k-token request cap
   const results: (number[] | null)[] = [];
 
   try {

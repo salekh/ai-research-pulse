@@ -76,7 +76,9 @@ export async function GET(request: Request) {
       meta: {
         engine: stats.engine,
         totalIndexed: stats.totalArticles,
+        totalAcademicPapers: stats.totalAcademicPapers,
         model: telemetry.activeModel,
+        neonModel: telemetry.neonModel,
         searchMode,
       },
     });

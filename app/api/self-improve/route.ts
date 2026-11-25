@@ -13,9 +13,15 @@ export const dynamic = 'force-dynamic';
 const ARCHITECTURAL_IMPROVEMENTS = [
   {
     id: 'model-registry',
-    title: 'Gemini 4 Dual-Tier Model Registry (Hydrogen + Carbon) & Gemini 3.8 Speech',
+    title: 'Gemini 4 Dual-Tier Model Registry (Neon + Hydrogen) & Gemini 3.8 Speech',
     status: 'active',
-    impact: 'Routes fast high-throughput tasks (filtering, tagging, summarization, reranking, transcription) to gemini-4-hydrogen and deep reasoning/synthesis (trends, self-audit, podcast scripts) to gemini-4-carbon, paired with Gemini 3.8 Flash TTS / Flash-Lite TTS and cascading fallbacks.',
+    impact: 'Routes cognitive-heavy tasks (paper/article Q&A, A2UI 1.0 visual briefs, cross-lab trends, self-audit, podcast scripts) to gemini-4-neon and light cognition (filtering, tagging, short summaries, audio transcription) to gemini-4-hydrogen, paired with Gemini 3.8 Flash TTS / Flash-Lite TTS.',
+  },
+  {
+    id: 'academic-separation',
+    title: 'Dedicated Academic Research Track (arXiv 6-Month Archive) & Grounded Q&A',
+    status: 'active',
+    impact: 'Isolates academic arXiv preprints (abstract + short Hydrogen summary + PDF/arXiv links only) from frontier Lab publications across PostgreSQL, SQLite, and GCS, with Gemini 4 Neon interactive paper Q&A across both tracks.',
   },
   {
     id: 'zero-loss-db-engine',
@@ -80,7 +86,7 @@ export async function POST() {
       .join('\n');
 
     let critiqueNotes = '';
-    let modelUsed: string = MODEL_REGISTRY.CARBON;
+    let modelUsed: string = MODEL_REGISTRY.NEON;
 
     const critiquePrompt = `You are the Recursive Self-Improvement Meta-Auditor for "Research Pulse", an AI research intelligence platform.
 Current canonical tag taxonomy: ${TAG_TAXONOMY.join(', ')}
@@ -98,7 +104,7 @@ Perform a concise, rigorous self-audit (return JSON):
     try {
       const res = await generateContentWithFallback({
         contents: critiquePrompt,
-        tier: 'carbon',
+        tier: 'neon',
         thinkingLevel: 'MEDIUM',
         config: {
           maxOutputTokens: 8192,

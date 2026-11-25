@@ -1,7 +1,7 @@
 # SPEC.md — AI Research Pulse System Specification
 
-> **Release Target:** `v3.0.0-gemini4-a2ui` (verified PASS across build, live APIs, security, and Playwright Desktop/Mobile UX audit)  
-> **GCP Project:** `sa-learning-1` (`us-central1` Cloud Run + Cloud SQL; Vertex AI `location: "global"` REQUIRED for Gemini 4 & 3.8 TTS; `us-central1` supported only for `text-embedding-004`)  
+> **Release Target:** `v3.1.0-neon-academic-qa` (Gemini 4 Neon + Hydrogen routing, isolated Academic Research arXiv 6-month track, and grounded Paper & Lab Q&A)  
+> **GCP Project:** `sa-learning-1` (`us-central1` Cloud Run + Cloud SQL; Vertex AI `location: "global"` REQUIRED for Gemini 4 Neon/Hydrogen & 3.8 TTS; `us-central1` supported only for `text-embedding-004`)  
 > **Governance:** Strictly governed by [`CONSTITUTION.md`](./CONSTITUTION.md) and tracked in [`BACKLOG.md`](./BACKLOG.md)
 
 ---
@@ -11,15 +11,19 @@
 **AI Research Pulse** is a Next.js 15 App Router (`react@18.3.1`, `tailwindcss@4.1.11`, TypeScript 5.9, Node 22 standalone Docker) intelligence platform serving ML researchers and Google Cloud AI Tech Group (FDE) engineers.
 
 ### Core User Journeys
-1. **Hero Semantic Discovery (`/` -> `components/search-hero.tsx`):** Full-viewport FDE dark aurora landing page with animated semantic search bar, quick topic pills (`Agentic Harnesses`, `Test-Time Compute`, `Mechanistic Interpretability`, `Video World Models`, `AI for Science`), primary navigation CTAs, `"I'm Feeling Lucky"` random recent paper redirect (`/api/lucky`), and an executive telemetry stat strip.
-2. **Hybrid Research Feed (`/feed` or in-app feed view -> `components/news-feed.tsx`, `components/news-card.tsx`):**
-   - Paginated (`limit=30`) 3-column desktop / 2-column tablet / 1-column mobile feed across **9 frontier AI labs**.
-   - Filters: Time range (`All Time`, `Past 1 Year`, `Past 1 Month`, `Past 2 Weeks`), Lab source dropdown, non-blocking background RSS refresh, and Hybrid Vector + BM25 + Discovery Engine semantic search with `% Semantic Match` banners.
-   - Per-Card Actions:
-     - **Bookmark / Save** (persisted in `localStorage` under `savedArticles`, surfaced in the `Saved` tab).
-     - **Read Paper** (canonical external source link).
-     - **Summarize / Instant Briefing** (`POST /api/summarize` with permanent SQLite cache `<2ms` hits).
-     - **Visual Brief (A2UI 1.0 — NEW P0):** Opens the full-height `ArticleVisualDrawer` rendering an interactive, FDE-branded visual research brief powered by `POST /api/a2ui` and `A2UIRenderer`.
+1. **Hero Semantic Discovery (`/` -> `components/search-hero.tsx`):** Full-viewport FDE dark aurora landing page with animated semantic search bar, quick topic pills, primary navigation CTAs (`Explore Labs Feed`, `Academic Research (arXiv)`, `Cross-Lab Trends`, `Self-Improve`), `"Lucky"` random recent paper redirect (`/api/lucky`), and an executive telemetry stat strip.
+2. **Frontier Labs Research Feed (`GET /api/news`, `category='lab'` -> `components/news-feed.tsx`, `components/news-card.tsx`):**
+   - Strictly isolated to **9 frontier AI labs** (`COALESCE(category, 'lab') = 'lab'` — zero leakage from Academic arXiv preprints).
+   - Paginated (`limit=30`) hybrid PostgreSQL (`pgvector` + `ts_rank_cd`/`ILIKE`) search with `350ms` debounce, `AbortController`, time range (`All Time`, `1y`, `1m`, `2w`), lab filter, and non-blocking background RSS refresh.
+   - Per-Card Actions: **Read**, **Summary** (`gemini-4-hydrogen`), **Ask** (`POST /api/ask` via `gemini-4-neon`), **Visual** (A2UI 1.0 via `gemini-4-neon`), and **Bookmark**.
+3. **Dedicated Academic Research Track (`GET /api/academic`, `category='academic'` -> `components/academic-feed.tsx`, `components/academic-card.tsx`):**
+   - Strictly separated from Labs via `category = 'academic'` across Cloud SQL PostgreSQL, local SQLite (`data/news.db`), and GCS Master Archive.
+   - Back-dated **6 months** (`2026-05-25` → `2026-11-25`) combining top HuggingFace Daily Papers, high-citation OpenAlex arXiv AI/LLM papers, and latest official arXiv `cs.AI`/`cs.LG`/`cs.CL` submissions (respecting arXiv 3s rate limits).
+   - **Abstract + Short Summary Indexing Only:** Never stores full paper bodies in DB — stores only title, authors, arXiv ID, primary track (`cs.AI`, `cs.LG`, `cs.CL`, `cs.CV`, `cs.RO`, `stat.ML`), abstract, concise `gemini-4-hydrogen` short summary, 768-dim embedding, impact score, and direct `arXiv` + `PDF` links.
+   - Filters: Time range (`2w`, `1m`, `3m`, `6m`, `all`), arXiv track, sort (`Latest` vs `Most Important`), hybrid semantic+keyword search, and **Ask Paper** (`gemini-4-neon`) + **Visual** (A2UI 1.0) drawers.
+4. **Grounded Paper & Lab Article Q&A (`POST /api/ask` -> `components/ask-paper-drawer.tsx`):**
+   - Multi-turn conversational Q&A powered by **`gemini-4-neon`** (`MEDIUM` thinking) available on every Academic Paper and every Frontier Lab article.
+   - Ephemerally fetches arXiv LaTeXML HTML (`arxiv.org/html/<id>` / `ar5iv`) or article body on demand (in-memory 15-min cache only, never written to DB) with SSRF protection, transparent grounding badge (`Grounded in arXiv HTML` / `Grounded in Full Article` / `Grounded in Abstract & Summary`), and follow-up question suggestions.
 3. **Cross-Lab Convergence & Trends (`components/trend-chart.tsx` -> `POST /api/trends`):**
    - Synthesizes up to 60 filtered articles into 6–8 ranked frontier signals (`emerging`, `growing`, `established`, `declining`), Recharts Topic Vector Radar, Investment Treemap, Maturity Signal Donut, Cross-Lab Convergence Matrix table, and an FDE Executive Strategic Synthesis report.
    - Protected by a 10-minute server-side memory cache (`trendsCache`) and a deterministic statistical synthesizer fallback.

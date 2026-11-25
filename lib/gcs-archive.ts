@@ -22,6 +22,9 @@ function getStorage(): Storage | null {
 }
 
 function getGcloudAccessToken(): string | null {
+  if (process.env.CLOUDSDK_AUTH_ACCESS_TOKEN?.trim()) {
+    return process.env.CLOUDSDK_AUTH_ACCESS_TOKEN.trim();
+  }
   try {
     return execSync('gcloud auth print-access-token', {
       encoding: 'utf-8',

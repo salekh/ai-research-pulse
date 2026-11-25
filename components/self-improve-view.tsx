@@ -99,7 +99,7 @@ export function SelfImproveView() {
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#4471ED]/20 border border-[#4471ED]/40 text-[#8ab4f8] text-xs font-mono font-normal uppercase tracking-wider">
               <Cpu className="w-3.5 h-3.5" />
-              <span>Autonomous Optimization Loop · {aiTelemetry.carbonModel || 'gemini-4-carbon'}</span>
+              <span>Autonomous Optimization Loop · {aiTelemetry.neonModel || 'gemini-4-neon'}</span>
             </div>
             <h2 className="text-2xl md:text-3xl font-bold tracking-tight font-display">
               Recursive Self-Improvement Engine
@@ -138,10 +138,10 @@ export function SelfImproveView() {
             <Cpu className="w-4 h-4 text-[#4471ED]" />
           </div>
           <div className="text-lg font-normal text-[#202124] font-mono tabular-nums">
-            {aiTelemetry.primaryModel || 'gemini-4-hydrogen'}
+            {aiTelemetry.neonModel || 'gemini-4-neon'}
           </div>
           <div className="text-xs text-[#5F6368] mt-1">
-            Reasoning: <span className="font-mono text-[#202124]">{aiTelemetry.carbonModel || 'gemini-4-carbon'}</span> · Fallback: <span className="text-[#137333] font-medium">Armed</span>
+            Light: <span className="font-mono text-[#202124]">{aiTelemetry.primaryModel || 'gemini-4-hydrogen'}</span> · Fallback: <span className="text-[#137333] font-medium">Armed</span>
           </div>
         </div>
 
